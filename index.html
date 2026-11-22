@@ -153,7 +153,7 @@ input[type=range]{width:100px;accent-color:#a77bf3}
     <button class="pill big" id="rpfmt" style="background:var(--peach)">🎨 Put my resume in a template</button>
     <button class="pill big" id="rptl" style="background:var(--sky)">✨ Tailor my resume with AI</button>
     <div class="lnote" id="rpstat"></div>
-    <div class="pbox" id="rpres"><b>Pick a template</b><div class="btns" id="rptpl"><button class="pill" data-t="classic">Classic</button><button class="pill" data-t="modern">Modern</button><button class="pill" data-t="creative">Creative</button></div><div id="rpprev"></div><b>Edit the text (the preview updates)</b><textarea id="rpedit" style="min-height:320px"></textarea><div class="btns"><button class="pill" id="rpcopy">Copy</button><button class="pill" id="rpdl" style="background:var(--mint)">Download .docx</button></div></div>
+    <div class="pbox" id="rpres"><b>Pick a template</b><div class="btns" id="rptpl"><button class="pill" data-t="modern">Modern</button><button class="pill" data-t="creative">Creative</button></div><div id="rpprev"></div><b>Edit the text (the preview updates)</b><textarea id="rpedit" style="min-height:320px"></textarea><div class="btns"><button class="pill" id="rpcopy">Copy</button><button class="pill" id="rpdl" style="background:var(--mint)">Download .docx</button></div></div>
     <div class="lnote">The score is an estimate, not a real ATS. Check every line before you send your resume, and only keep facts that are true.</div>
   </div>
 </section>
@@ -406,7 +406,7 @@ async function iv(s,msgs,onTok){
   return '';
 }
 const IVK=()=>'yantra.iv.'+user;
-function docs(){try{return JSON.parse(localStorage.getItem(IVK())||'{}')}catch(e){return {}}}
+function docs(){let d={};try{d=JSON.parse(localStorage.getItem(IVK())||'{}')}catch(e){}if(d.resume)d.resume=cleanText(d.resume);if(d.jd)d.jd=cleanText(d.jd);return d}
 function ivUi(){const d=docs();$('rs').textContent=d.resume?d.resume.length+' characters saved':'Nothing added yet';$('js').textContent=d.jd?d.jd.length+' characters saved (optional)':'Nothing added yet (optional)'}
 function setDoc(k,t){const d=docs();d[k]=String(t).slice(0,12000);try{localStorage.setItem(IVK(),JSON.stringify(d))}catch(e){toast('Not enough storage to save that.')}ivUi();rpUi()}
 let tgt='resume';
@@ -485,7 +485,26 @@ $('cam').onclick=()=>$('camf').click();
 $('camf').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)readPhoto(f)};
 /* ---------- Resume prep ---------- */
 const GEN=new Set('ability using use etc responsible ensure support provide develop develops including across within opportunity environment business related relevant plus seeking able well based help make part like need needs should would could'.split(' '));
-const SEC=/^\s*(professional summary|summary|objective|profile|career objective|technical skills|skills|core competencies|work experience|professional experience|experience|employment history|projects|academic projects|education|certifications|achievements|awards|internships)\s*:?\s*$/i;
+const SEC=/^\s*(professional summary|summary|objective|profile|career objective|technical skills|skills|core competencies|work experience|professional experience|experience|employment history|projects|academic projects|education|certifications|achievements|awards|internships|languages|interests|publications|volunteer experience|volunteering|references)\s*:?\s*$/i;
+const SECC=/^(professionalsummary|summary|objective|profile|careerobjective|technicalskills|skills|corecompetencies|workexperience|professionalexperience|experience|employmenthistory|projects|academicprojects|education|certifications|achievements|awards|internships|languages|interests|publications|volunteerexperience|volunteering|references)$/i;
+function headOf(t){t=String(t).trim();const m=t.match(SEC);if(m)return m[1].toUpperCase();if(t.length<32&&SECC.test(t.replace(/[\s:]/g,'')))return t.replace(/:$/,'').toUpperCase();return null}
+function fixLine(l){
+  const t=l.trim();if(t.length<7)return l;
+  const up=x=>/^[A-Z]{1,2}$/.test(x),words=t.split(/\s{2,}/);
+  if(words.length>1&&words.every(w=>{const k=w.split(' ');return k.length>=3&&k.every(up)}))return words.map(w=>w.replace(/ /g,'')).join(' ');
+  const k=t.split(' ');
+  if(words.length===1&&k.length>=5&&k.every(up))return k.join('');
+  return l;
+}
+function cleanText(t){
+  const out=[],conn=/(,|\b(?:and|or|to|of|in|for|with|the|a|an|by|on|at|from|as|using|including)\s*)$/i;
+  String(t).replace(/\r/g,'').replace(/[\u200b\u00ad]/g,'').split('\n').forEach(raw=>{
+    const l=fixLine(raw.replace(/[ \t]+$/,'')),c=l.trim(),prev=out.length?out[out.length-1]:null;
+    if(out.length>1&&prev&&prev.trim()&&c&&!/@|https?:|www\.|linkedin|github|^\+?\d[\d\s-]{7,}/i.test(c)&&!headOf(c)&&!headOf(prev)&&!/^[•\-*·▪●◦–]/.test(c)&&(/^[a-z(]/.test(c)||conn.test(prev.trim())))out[out.length-1]=prev.replace(/\s+$/,'')+' '+c;
+    else out.push(l);
+  });
+  return out.join('\n');
+}
 const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const strip=l=>String(l).replace(/^[\s•\-*·▪●◦–]+/,'').trim();
 function atsKeys(jd,res){
@@ -524,30 +543,34 @@ function showAts(r,box){
 }
 function parseResume(t){
   const secs=[{h:'',lines:[]}];
-  String(t).split('\n').map(l=>l.replace(/\s+$/,'')).forEach(l=>{const m=l.trim().match(SEC);if(m)secs.push({h:m[1].toUpperCase(),lines:[]});else secs[secs.length-1].lines.push(l)});
+  String(t).split('\n').map(l=>l.replace(/\s+$/,'')).forEach(l=>{const m=headOf(l);if(m)secs.push({h:m,lines:[]});else secs[secs.length-1].lines.push(l)});
   return secs;
 }
 const secKind=h=>!h?'head':/SUMMARY|OBJECTIVE|PROFILE/.test(h)?'summary':/SKILL|COMPETEN/.test(h)?'skills':/EXPERIENCE|EMPLOYMENT|PROJECT|INTERNSHIP/.test(h)?'exp':'other';
 const nums=t=>String(t).match(/\d[\d,.%]*/g)||[];
 function okRewrite(o,n){return nums(n).every(x=>o.includes(x))&&nums(o).every(x=>n.includes(x))&&n.length>=8&&n.length<=o.length*1.7+60}
 function reorderSkills(body,jd){
-  const jl=jd.toLowerCase(),items=[...new Set(body.split(/[,;|•\n]+/).map(x=>strip(x)).filter(x=>x.length>1&&x.length<40))];
-  if(items.length<3)return body;
-  const hit=items.filter(x=>jl.includes(x.toLowerCase())),rest=items.filter(x=>!jl.includes(x.toLowerCase()));
-  return [...hit,...rest].join(', ');
+  const jl=jd.toLowerCase(),g=skillGroups(body.split('\n'));
+  const order=arr=>[...arr.filter(x=>jl.includes(x.toLowerCase())),...arr.filter(x=>!jl.includes(x.toLowerCase()))];
+  if(g.filter(x=>x.label).length>=2)return g.map(x=>(x.label?x.label+': ':'')+order(x.text.split(/\s*,\s*/).filter(Boolean)).join(', ')).join('\n');
+  const items=[...new Set(body.split(/[,;|•\n]+/).map(x=>strip(x)).filter(x=>x.length>1&&x.length<40))];
+  return items.length<3?body:order(items).join(', ');
 }
 async function mkSummary(res,a,role){
   const ls=lines(res).filter(l=>!/@|\d{8,}/.test(l)).slice(0,6).join('\n').slice(0,700);
   for(let t=0;t<2;t++){
     const o=await gen('You write a resume summary of 2 to 3 sentences. Use only facts from NOTES. Do not mention years of experience or any number unless it appears in NOTES. No first-person pronouns. Use a keyword from KEYWORDS only if NOTES support it.','TARGET ROLE: '+role+'\nNOTES:\n'+ls+'\nKEYWORDS: '+a.hit.slice(0,8).join(', '),150,null);
-    if(o.length>40&&nums(o).every(x=>res.includes(x)))return o.replace(/\n+/g,' ');
+    const c=o.replace(/[*#_`]+/g,'').replace(/^\s*(professional\s+)?summary\s*:\s*/i,'').replace(/\n+/g,' ').trim();
+    if(c.length>40&&nums(c).every(x=>res.includes(x))&&!/\b(I|my|me)\b/.test(c)&&!/keyword/i.test(c))return c;
   }
   return null;
 }
 const MON='(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\\.?\\s+';
 const YR='(?:'+MON+')?(?:19|20)\\d{2}';
 const DATE_END=new RegExp('('+YR+'\\s*(?:[-–—]|to)\\s*(?:'+YR+'|Present|Current|Now)|'+YR+')\\s*$','i');
-const isBullet=l=>/^\s*[•\-*·▪●◦–]/.test(l)||(strip(l).length>70&&!DATE_END.test(l));
+const HAS_RANGE=new RegExp(YR+'\\s*(?:[-–—]|to)\\s*(?:'+YR+'|Present|Current|Now)','i');
+const DATE_FULL=new RegExp('^(?:'+YR+'\\s*(?:[-–—]|to)\\s*(?:'+YR+'|Present|Current|Now)|'+YR+')$','i');
+const isBullet=l=>/^\s*[•\-*·▪●◦–]/.test(l)||(strip(l).length>70&&!DATE_END.test(l)&&!(HAS_RANGE.test(l)&&l.length<150));
 async function rewriteBullets(ls,ctx){
   const idx=[];ls.forEach((l,i)=>{if(isBullet(l)&&strip(l).length>25)idx.push(i)});
   const take=idx.slice(0,Math.max(0,ctx.left));ctx.left-=take.length;
@@ -577,7 +600,6 @@ function zipStore(files){
 }
 const xe=t=>String(t).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 const TPL={
-  classic:{font:'Calibri',hfont:'Calibri',sz:21,acc:'222222',sub:'555555',nameC:'111111',nameSz:44,align:'center',head:'rule',rule:'9AA0A6',band:null},
   modern:{font:'Calibri',hfont:'Calibri',sz:21,acc:'5B3FA8',sub:'555555',nameC:'2A1F5C',nameSz:52,align:'left',head:'rule',rule:'5B3FA8',band:null},
   creative:{font:'Calibri',hfont:'Georgia',sz:21,acc:'B8456E',sub:'3B2A5C',nameC:'3B2A5C',nameSz:52,align:'left',head:'bar',rule:'B8456E',band:'EADFFF'}
 };
@@ -586,26 +608,57 @@ function expEntries(ls){
   ls.forEach(l=>{
     const t=l.trim();if(!t)return;
     if(isBullet(l)){if(!cur){cur={title:'',date:'',sub:'',bul:[],n:0};ents.push(cur)}cur.bul.push(strip(l));return}
-    const m=t.match(DATE_END),left=(m?t.slice(0,m.index):t).replace(/[\s,|–—-]+$/,''),date=m?m[1].trim():'';
-    if(cur&&!cur.bul.length&&cur.n===1){cur.sub=left;if(date&&!cur.date)cur.date=date;cur.n=2}
-    else{cur={title:left,date,sub:'',bul:[],n:1};ents.push(cur)}
+    let left,date='',sub='';
+    const parts=t.split(/\s*\|\s*/),di=parts.length>1?parts.findIndex(x=>DATE_FULL.test(x.trim())):-1;
+    if(di>=0){date=parts[di].trim();const o=parts.filter((_,i)=>i!==di);left=o[0];sub=o.slice(1).join(' | ')}
+    else{const m=t.match(DATE_END);left=(m?t.slice(0,m.index):t).replace(/[\s,|–—-]+$/,'');date=m?m[1].trim():''}
+    const main=left?(sub?left+' | '+sub:left):sub;
+    if(cur&&!cur.bul.length&&((date&&!cur.date)||(cur.date&&cur.n<4&&(main||'').length<=45&&!/[—–]/.test(main||'')))){
+      if(date&&!cur.date)cur.date=date;
+      if(main)cur.sub=cur.sub?cur.sub+' | '+main:main;
+      cur.n++;
+    }else{
+      let title=left||'',s2=sub;const d=title.search(/\s[—–]\s/);
+      if(d>0){s2=title.slice(d).replace(/^\s[—–]\s/,'')+(sub?' | '+sub:'');title=title.slice(0,d)}
+      cur={title,date,sub:s2,bul:[],n:s2?2:1};ents.push(cur);
+    }
   });
   return ents;
 }
+function skillGroups(ls){
+  const L=ls.map(strip).filter(Boolean),out=[];
+  for(let i=0;i<L.length;i++){
+    let l=L[i];
+    if(!/:/.test(l)&&l.length<40&&!/,/.test(l)&&L[i+1]&&/^[^:,]{1,35}:/.test(L[i+1])){l=l+' '+L[i+1];i++}
+    const m=l.match(/^([^:]{2,60}):\s*(.*)$/);
+    if(m)out.push({label:m[1].trim(),text:m[2].trim()});
+    else if(out.length)out[out.length-1].text+=(out[out.length-1].text?' ':'')+l;
+    else out.push({label:'',text:l});
+  }
+  return out;
+}
 function structResume(text){
-  const secs=parseResume(text),hl=secs[0].lines.map(l=>l.trim()).filter(Boolean),noSec=secs.length===1;
-  const name=hl[0]||'Your Name',rest=hl.slice(1,noSec?4:undefined);
-  let headline='';const contact=[];
-  rest.forEach(l=>{if(!headline&&!/[@\d]|http|linkedin|github/i.test(l)&&l.length<70)headline=l;else l.split(/\s*[|·•]\s*|\s{2,}/).forEach(x=>{x=x.trim();if(x)contact.push(x)})});
+  const secs=parseResume(text),hl=secs[0].lines.map(l=>l.trim()).filter(Boolean);
+  const name=hl[0]||'Your Name';let headline='';const contact=[],extra=[];
+  hl.slice(1).forEach((l,i)=>{
+    const isC=/@|https?:|www\.|linkedin|github|\+?\d[\d\s-]{7,}/i.test(l);
+    if(i<5&&l.length<=220&&(isC||(l.length<=40&&/,/.test(l))))l.split(/\s*[|·•]\s*|\s{2,}/).forEach(x=>{x=x.trim();if(x)contact.push(x)});
+    else if(!headline&&!extra.length&&i<3&&l.length<70)headline=l;
+    else extra.push(l);
+  });
   const sections=secs.slice(1).map(x=>{
     const k=secKind(x.h),ls=x.lines.map(l=>l.replace(/\s+$/,'')).filter(l=>l.trim()),o={h:x.h,k};
     if(k==='summary')o.text=ls.map(strip).join(' ');
-    else if(k==='skills')o.items=[...new Set(ls.join('\n').split(/[,;|•\n]+/).map(strip).filter(y=>y.length>1))];
+    else if(k==='skills'){
+      const g=skillGroups(ls);
+      if(g.filter(z=>z.label).length>=2)o.groups=g;
+      else o.items=[...new Set(ls.join('\n').split(/[,;|•\n]+/).map(strip).filter(y=>y.length>1))];
+    }
     else if(k==='exp'||/EDUCATION/.test(x.h))o.ents=expEntries(ls);
     else o.list=ls.map(strip);
     return o;
   });
-  if(!sections.length&&hl.length>4)sections.push({h:'DETAILS',k:'other',list:hl.slice(4).map(strip)});
+  if(extra.length)sections.unshift({h:'DETAILS',k:'other',list:extra.map(strip)});
   return {name,headline,contact,sections};
 }
 const rpr=o=>'<w:rPr><w:rFonts w:ascii="'+o.f+'" w:hAnsi="'+o.f+'" w:cs="'+o.f+'"/>'+(o.b?'<w:b/>':'')+(o.i?'<w:i/>':'')+(o.caps?'<w:caps/>':'')+(o.c?'<w:color w:val="'+o.c+'"/>':'')+(o.sp?'<w:spacing w:val="'+o.sp+'"/>':'')+'<w:sz w:val="'+o.sz+'"/></w:rPr>';
@@ -623,6 +676,7 @@ function makeDocx(text,key){
     P.push('<w:p>'+ppr(Object.assign({keep:1,bf:220,af:80},hs))+run(sec.h,{b:1,caps:1,c:T.acc,sz:22,sp:T.head==='bar'?20:30,f:T.hfont})+'</w:p>');
     if(sec.text)P.push('<w:p>'+ppr({af:60})+run(sec.text)+'</w:p>');
     else if(sec.items)P.push('<w:p>'+ppr({af:60})+run(sec.items.join('  •  '))+'</w:p>');
+    else if(sec.groups)sec.groups.forEach(g=>P.push('<w:p>'+ppr({af:40})+(g.label?run(g.label+': ',{b:1}):'')+run(g.text)+'</w:p>'));
     else if(sec.ents)sec.ents.forEach((e,ei)=>{
       P.push('<w:p>'+ppr({keep:1,tab:9906,bf:ei?110:40})+run(e.title,{b:1})+(e.date?'<w:r><w:tab/></w:r>'+run(e.date,{sz:19,c:T.sub}):'')+'</w:p>');
       if(e.sub)P.push('<w:p>'+ppr({keep:e.bul.length?1:0,af:20})+run(e.sub,{i:1,c:T.sub})+'</w:p>');
@@ -652,6 +706,7 @@ function prevHtml(st,T){
     h+='<div style="margin-top:9px;'+hs+'font-weight:700;text-transform:uppercase;letter-spacing:.08em;'+c(T.acc)+';font-family:'+T.hfont+',Georgia,serif;'+z(22)+'">'+esc(sec.h)+'</div>';
     if(sec.text)h+='<div style="margin-top:3px">'+esc(sec.text)+'</div>';
     else if(sec.items)h+='<div style="margin-top:3px">'+sec.items.map(esc).join('  •  ')+'</div>';
+    else if(sec.groups)h+=sec.groups.map(g=>'<div style="margin-top:3px">'+(g.label?'<b>'+esc(g.label)+':</b> ':'')+esc(g.text)+'</div>').join('');
     else if(sec.ents)sec.ents.forEach(e=>{h+='<div style="display:flex;justify-content:space-between;gap:8px;margin-top:5px;font-weight:700"><span>'+esc(e.title)+'</span><span style="font-weight:400;'+c(T.sub)+';white-space:nowrap">'+esc(e.date)+'</span></div>'+(e.sub?'<div style="font-style:italic;'+c(T.sub)+'">'+esc(e.sub)+'</div>':'')+e.bul.map(bl).join('')});
     else if(sec.list)h+=sec.list.map(bl).join('');
   });
@@ -691,7 +746,7 @@ $('rptl').onclick=async()=>{
       if(k==='head'){head=raw;continue}
       let body=raw;
       if(k==='summary'&&sum)body=sum;
-      else if(k==='skills')body=reorderSkills(raw,jd);
+      else if(k==='skills')body=/:/.test(raw)?raw:reorderSkills(raw,jd);
       else if(k==='exp')body=(await rewriteBullets(x.lines,ctx)).join('\n').trim();
       out.push({h:x.h,body});
     }
@@ -706,6 +761,7 @@ $('rptl').onclick=async()=>{
 $('rpcopy').onclick=()=>{try{navigator.clipboard.writeText($('rpedit').value).then(()=>toast('Copied.'),()=>toast('Could not copy. Select the text and copy it.'))}catch(e){toast('Could not copy. Select the text and copy it.')}};
 $('rpdl').onclick=()=>saveDocx($('rpedit').value);
 let tpl='modern';try{tpl=localStorage.getItem('yantra.tpl')||'modern'}catch(e){}
+if(!TPL[tpl])tpl='modern';
 function rpPrev(){
   const v=$('rpedit').value;
   try{$('rpprev').innerHTML=v.trim()?prevHtml(structResume(v),TPL[tpl]||TPL.modern):''}catch(e){$('rpprev').textContent='Preview not available.'}
