@@ -90,7 +90,6 @@ input[type=range]{width:100px;accent-color:#a77bf3}
 .btns .pill.on{background:var(--pink);color:#3b2a5c}
 .paper{background:#fff;color:#1f1f1f;border:2px solid var(--ink);border-radius:6px;padding:12px;font-size:8.6px;line-height:1.35;overflow:hidden}
 .msg.bot[data-sp]{cursor:pointer}.msg.bot[data-sp]::after{content:" 🔊";opacity:.55;font-size:.85em}
-.pk{display:flex;align-items:center;justify-content:space-between;gap:8px;border:2px solid var(--ink);border-radius:10px;background:var(--field);padding:8px 10px}.pk .btns{flex:none}
 .wk{display:flex;gap:6px;align-items:flex-end;height:50px}.wk div{flex:1;text-align:center;font-size:12px;display:flex;flex-direction:column;justify-content:flex-end}.wk i{display:block;background:var(--mint);border:2px solid var(--ink);border-radius:4px 4px 0 0;min-height:4px}
 .tb{display:flex;align-items:center;gap:8px}.tb .meter{flex:1}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -143,7 +142,6 @@ input[type=range]{width:100px;accent-color:#a77bf3}
     <button class="pill big" id="m_bank">📚 Question bank (many)</button>
     <button class="pill big" id="m_prac" style="background:var(--butter)">🎤 Practice interview</button>
     <button class="pill big" id="m_ask" style="background:var(--sky)">🎧 Answer coach (hear a question)</button>
-    <b>📦 Question packs (no resume needed)</b><div id="packs" style="display:flex;flex-direction:column;gap:8px"></div>
     <div class="lnote">PDF, Word (.docx) or text. Files are read on your phone. Scanned PDFs: paste the text instead.</div>
   </div>
 </section>
@@ -387,7 +385,6 @@ const needModel='Tap Get model first (yellow bar). It downloads once, then works
 async function iv(s,msgs,onTok){
   const d=docs(),text=((msgs.filter(m=>m.r==='user').pop()||{}).t||'').trim(),cmd=text.toLowerCase();
   if(s.mode==='bank'){
-    if(s.pack)return 'Open Interview prep and tap Practice on this pack to answer these questions one by one.';
     if(cmd!=='more')return 'Type more and I will write extra questions with the AI, based on your resume.';
     if(!engine)return needModel;
     const all=lines(d.resume||''),pool=all.slice(s.mi,s.mi+3);
@@ -408,7 +405,7 @@ async function iv(s,msgs,onTok){
   if(s.mode==='practice'){
     if(s.done)return 'This interview is finished. Start a new one from Interview prep.';
     if(cmd==='end')return summary(s);
-    const q=s.bank[s.n],topic=s.pack?PACKS[s.pack].name:topicOf(q);let f='',sc=null;
+    const q=s.bank[s.n],topic=topicOf(q);let f='',sc=null;
     if(cmd==='skip')f='Skipped.';
     else{
       const r=scoreAnswer(q,text,d);sc=r.score;logProg(topic,sc);
@@ -454,113 +451,16 @@ $('ivf').onchange=async e=>{
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function startMode(mode,o){
   o=o||{};const d=docs(),names={bank:'Question bank',practice:'Practice interview',ask:'Answer coach'};
-  let bank,title=names[mode];
-  if(o.pack){const pk=PACKS[o.pack];bank=shuffle(pk.q.slice());title=pk.name+(mode==='bank'?' pack':' practice')}
-  else{
-    if(!o.topic&&!d.resume){toast('Add your resume first.');return}
-    bank=d.resume?buildBank(d.resume,d.jd||''):CLASSICS.slice();
-    if(o.topic){const f=bank.filter(q=>topicOf(q)===o.topic);if(f.length>=3)bank=f;title='Practice: '+o.topic}
-  }
-  const x={title:'🎯 '+title,mode,msgs:[],bank,n:0,fb:[],mi:0};if(o.pack)x.pack=o.pack;
-  if(mode==='bank')x.msgs.push({r:'bot',t:'Here are '+bank.length+' questions'+(o.pack?' for '+PACKS[o.pack].name:' made from your resume'+(d.jd?' and the job description':''))+':\n\n'+bank.map((q,i)=>(i+1)+'. '+q).join('\n\n')+(o.pack?'\n\nTap Practice on this pack in Interview prep to answer them one by one.':'\n\nType more and I will write extra questions with the AI.')});
+  if(!o.topic&&!d.resume){toast('Add your resume first.');return}
+  let bank=d.resume?buildBank(d.resume,d.jd||''):CLASSICS.slice(),title=names[mode];
+  if(o.topic){const f=bank.filter(q=>topicOf(q)===o.topic);if(f.length>=3)bank=f;title='Practice: '+o.topic}
+  const x={title:'🎯 '+title,mode,msgs:[],bank,n:0,fb:[],mi:0};
+  if(mode==='bank')x.msgs.push({r:'bot',t:'Here are '+bank.length+' questions made from your resume'+(d.jd?' and the job description':'')+':\n\n'+bank.map((q,i)=>(i+1)+'. '+q).join('\n\n')+'\n\nType more and I will write extra questions with the AI.'});
   if(mode==='practice')x.msgs.push({r:'bot',t:'Practice interview. I ask, you answer by typing or 🎤, and you get a score out of 10 plus coaching. Tap any reply to hear it. Type skip for the next question and end to finish.\n\nQ1: '+bank[0]});
   if(mode==='ask')x.msgs.push({r:'bot',t:'Answer coach. Tap 🎤 and say the interviewer’s question, or type it. I draft an answer from your resume and keep listening for the next question. Tap 🎤 again to stop.'});
   sessions.unshift(x);cur=0;save();$('iv').classList.remove('on');render();
   if(mode==='practice'&&autoTts){unlockTts();speak(x.msgs[0].t)}
 }
-/* ---------- Packs, scoring, progress, read aloud ---------- */
-const PACKS={
- it:{name:'Fresher IT / Software',q:['Tell me about yourself and why you chose software.','Explain object-oriented programming with a real example.','What is the difference between a process and a thread?','What is the difference between an array and a linked list? When would you use each?','Explain how a hash map works.','What is the difference between SQL and NoSQL databases?','What is a primary key and a foreign key?','Explain REST APIs and the common HTTP methods.','What is the difference between GET and POST?','What is Git, and how do you resolve a merge conflict?','Explain the difference between a stack and a queue with examples.','What is recursion? Give a simple example and its risks.','What is time complexity? Explain Big O with an example.','Describe a project you built. What was your role and what problems did you solve?','How do you debug a program that crashes with no clear error message?','What are the SOLID principles? Explain any two.','What is the difference between abstraction and encapsulation?','How would you test a login page?','What is the difference between authentication and authorization?','Explain what happens when you type a website address into a browser.','How do you keep learning new technologies?','Tell me about a time you worked in a team on a technical problem.','What is Agile? Describe how a sprint works.','Where do you see yourself in five years in tech?']},
- data:{name:'Data Analyst / BI',q:['Tell me about yourself and your journey into data.','What is the difference between INNER JOIN, LEFT JOIN and FULL JOIN?','How do you find duplicate rows in a table?','Explain the difference between WHERE and HAVING.','What is a window function? Give an example such as ROW_NUMBER or RANK.','How do you find the second highest salary using SQL?','What is the difference between a CTE and a subquery?','How do you handle missing values in a dataset?','How do you spot and treat outliers?','Explain the difference between a dashboard and a report.','In Power BI, what is the difference between a calculated column and a measure?','What is DAX, and how would you calculate year-to-date sales?','What is a star schema and why is it used?','Explain the difference between OLTP and OLAP.','How do you choose the right chart for a business question?','Describe a dashboard you built. Who used it and what changed because of it?','How do you check that the numbers in your report are correct?','How would you explain a finding to a non-technical manager?','What is the difference between correlation and causation?','How do you optimize a slow SQL query?','What is data normalization?','Tell me about a time your analysis changed a business decision.','How do you handle conflicting requirements from two stakeholders?','What KPIs would you track for an e-commerce business?']},
- hr:{name:'HR and Behavioral',q:[...CLASSICS,'Tell me about a time you dealt with a difficult customer or colleague.','Describe a goal you set and how you achieved it.','Tell me about a time you had to adapt to a big change.','How do you work with someone whose style is very different from yours?','Tell me about a time you went above and beyond.','Describe a time you had to decide with limited information.','What is the best feedback you have ever received?','How do you manage stress?','Tell me about a time you led others without formal authority.','What would your previous manager say about you?']},
- bank:{name:'Bank PO / Clerk',q:['Why do you want to join the banking sector?','Why this bank in particular?','Are you willing to work in any location in India, including rural branches?','What is the role of the Reserve Bank of India?','What is the repo rate and how does it affect loans?','What is the difference between the repo rate and the reverse repo rate?','What is inflation and how does it affect the common person?','What is KYC and why is it required?','What is the difference between a savings account and a current account?','What is an NPA? What are the types of NPAs?','What are CRR and SLR?','What is UPI and how has it changed payments in India?','What is financial inclusion? Name some government schemes for it.','What is the Pradhan Mantri Jan Dhan Yojana?','What is the difference between a public sector bank and a private bank?','What is a credit score and how can someone improve it?','How would you handle an angry customer at the counter?','What are the key qualities of a good banker?','How can customers stay safe from online banking fraud?','What is the difference between NEFT, RTGS and IMPS?','Tell me about a banking news item you read recently.','What is GDP and why does it matter?','How do you handle work pressure and targets?','Where do you see yourself in the bank in five years?']},
- govt:{name:'Government Exam Interview',q:['Tell me about yourself, your background and your hobbies.','Why do you want to join the civil services?','What does your home district or state mean to you? Tell me about its history, culture and challenges.','What is the biggest challenge facing India today, and how would you address it?','How would you handle pressure from a senior while doing your duty?','Explain the purpose of affirmative action policies and the debates around them.','What are your strengths and weaknesses as a future administrator?','Explain the role of a District Collector.','What is the difference between governance and government?','How would you improve girls education in a backward district?','Why is ethics important in public service?','What do you think about using technology in governance?','How would you handle a flood or another natural disaster in your district?','What is the difference between a policy and a program?','Describe a time you took a difficult decision on principle.','How do you handle failure, for example failing an exam?','What do you think about a major government scheme that is in the news?','What is federalism and why is it important for India?','What would you do if you were not selected?','What does public service mean to you?']},
- sales:{name:'Sales and Customer Support',q:['Why do you want a career in sales?','Sell me something you use every day.','How do you handle rejection from a customer?','Describe your sales process from first contact to closing.','How do you qualify a lead?','Tell me about a time you missed a target. What did you do next?','Tell me about your biggest sale or win.','How do you handle a customer who says your price is too high?','How do you build a long-term relationship with a client?','How do you handle an angry or upset customer?','A customer asks for something the company cannot do. What do you say?','How do you prioritize many customer tickets at once?','Which metrics do you track in your work?','How do you stay calm and polite after a long day of difficult calls?','Tell me about a time you turned an unhappy customer into a happy one.','How do you explain a complex product simply?','What is the difference between upselling and cross-selling? Give examples.','How do you plan your daily follow-ups?','How have you used CRM tools?','What would you do if a teammate took credit for your sale?','How do you research a prospect before a call?','Where do you see yourself in the sales team in three years?']},
- mgr:{name:'Manager / Team Lead',q:['How would you describe your leadership style?','Tell me about a time you led a team through a difficult project.','How do you set goals for your team?','How do you handle an underperforming team member?','How do you motivate people when morale is low?','How do you delegate tasks?','Tell me about a time you had to deliver bad news to your team.','How do you handle conflict between two team members?','How do you prioritize when everything is urgent?','Describe a time you made an unpopular decision.','How do you give feedback, both positive and critical?','How do you measure your team’s success?','How do you handle disagreements with your boss?','Tell me about a time you failed as a leader.','How do you build trust in a new team?','How do you hire for your team?','How do you balance quality and deadlines?','How do you support the growth of your team members?','How do you manage remote or hybrid teams?','Tell me about a time you worked with a tight budget or limited resources.','How do you handle stakeholders with competing priorities?','What would you do in your first 90 days as a manager?']}
-};
-function topicOf(q){
-  if(/^You mentioned:/.test(q))return 'Your experience';
-  if(/^The role needs:/.test(q))return 'Role fit';
-  if(/hands-on experience with|challenge you solved using|non-technical person/.test(q))return 'Technical skills';
-  return 'HR and behavioral';
-}
-const FILL=/\b(um+|uh+|erm|like|basically|actually|you know|kind of|sort of|literally)\b/gi;
-function scoreAnswer(q,a,d){
-  const w=a.trim().split(/\s+/).filter(Boolean).length,tips=[];
-  const len=w<10?0:w<25?1:w<40?2:w<=160?3:w<=230?2:1;
-  const num=/\d/.test(a)?2:0,res=/\b(result|resulted|improved|reduced|increased|saved|achieved|delivered|launched|impact|outcome|grew|growth|faster|success|successfully|learned)\b|%/i.test(a)?2:0;
-  const I=(a.match(/\bI\b/g)||[]).length,own=I>=3?1.5:I>=1?0.75:0;
-  const vocab=new Set(words(d&&d.resume?d.resume:q)),mine=new Set(words(a).filter(x=>x.length>=5&&vocab.has(x)));
-  const rel=mine.size>=4?1.5:mine.size>=2?0.75:0;
-  const fill=(a.match(FILL)||[]).length,pen=Math.min(1.5,fill*0.3);
-  const score=Math.max(0,Math.min(10,Math.round((len+num+res+own+rel-pen)*10)/10));
-  if(w<25)tips.push('Give more detail. About 40 to 120 words works well.');
-  if(w>230)tips.push('Shorten it. Aim for under two minutes, about 150 words.');
-  if(!num)tips.push('Add a number: a percentage, amount, count or time.');
-  if(!res)tips.push('End with the result or impact of what you did.');
-  if(own<1)tips.push('Say what you did yourself, using “I”.');
-  if(fill>=3)tips.push('Cut filler words like “um”, “like” and “basically”.');
-  if(rel<0.75&&d&&d.resume)tips.push('Mention specifics from your own experience.');
-  return {score,label:score>=8?'Strong':score>=6?'Good':score>=4?'Fair':'Needs work',tips,words:w,fill};
-}
-const PGK=()=>'yantra.prog.'+user;
-function prog(){try{return JSON.parse(localStorage.getItem(PGK())||'{}')}catch(e){return {}}}
-const dk=o=>{const t=new Date(Date.now()-o*864e5);return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0')};
-function logProg(topic,sc){
-  const p=prog();p.days=p.days||{};p.topics=p.topics||{};
-  const d=p.days[dk(0)]=p.days[dk(0)]||{n:0,sum:0};d.n++;d.sum+=sc;
-  const t=p.topics[topic]=p.topics[topic]||{n:0,sum:0};t.n++;t.sum+=sc;
-  p.total=(p.total||0)+1;p.sumAll=(p.sumAll||0)+sc;
-  try{localStorage.setItem(PGK(),JSON.stringify(p))}catch(e){}
-}
-function streakOf(p){const days=p.days||{};let o=(days[dk(0)]&&days[dk(0)].n)?0:1,n=0;while(days[dk(o)]&&days[dk(o)].n){n++;o++}return n}
-function pgRender(){
-  const p=prog(),box=$('pgcard');
-  if(!p.total){box.innerHTML='<div class="card"><b>📈 Your progress</b><div>Answer questions in a Practice interview. Your streak, scores and weak topics will show here.</div></div>';return}
-  const days=p.days||{},st=streakOf(p),td=(days[dk(0)]||{}).n||0,avg=(p.sumAll/p.total).toFixed(1);
-  let wk='';for(let o=6;o>=0;o--){const n=(days[dk(o)]||{}).n||0,L='SMTWTFS'[new Date(Date.now()-o*864e5).getDay()];wk+='<div><i style="height:'+Math.min(34,4+n*6)+'px"></i>'+L+'</div>'}
-  const tp=Object.keys(p.topics||{}).map(k=>({k,n:p.topics[k].n,a:p.topics[k].sum/p.topics[k].n})).sort((a,b)=>a.a-b.a).slice(0,6);
-  const weak=tp.find(x=>x.n>=2);
-  box.innerHTML='<div class="card"><b>📈 Your progress</b><div>🔥 '+st+' day streak · '+td+' answers today</div><div>Average score '+avg+'/10 over '+p.total+' answers</div><div class="wk">'+wk+'</div>'
-   +(tp.length?'<div>Topics, weakest first</div>'+tp.map(x=>'<div class="tb"><span style="min-width:120px">'+esc(x.k)+'</span><div class="meter"><i style="width:'+Math.round(x.a*10)+'%"></i></div><span>'+x.a.toFixed(1)+'</span></div>').join(''):'')
-   +(weak?'<button class="pill" id="pgweak" data-t="'+esc(weak.k)+'" style="background:var(--peach)">Practice weakest: '+esc(weak.k)+'</button>':'')+'</div>';
-  const b=$('pgweak');if(b)b.onclick=()=>practiceTopic(b.dataset.t);
-}
-function practiceTopic(name){const k=Object.keys(PACKS).find(x=>PACKS[x].name===name);if(k)startMode('practice',{pack:k});else startMode('practice',{topic:name})}
-function packsUi(){
-  const box=$('packs');box.innerHTML='';
-  Object.keys(PACKS).forEach(k=>{
-    const r=document.createElement('div');r.className='pk';
-    const t=document.createElement('span');t.textContent=PACKS[k].name+' ('+PACKS[k].q.length+')';
-    const b=document.createElement('div');b.className='btns';
-    const rd=document.createElement('button');rd.className='pill';rd.textContent='Read';rd.onclick=()=>startMode('bank',{pack:k});
-    const pr=document.createElement('button');pr.className='pill';pr.style.background='var(--butter)';pr.textContent='Practice';pr.onclick=()=>startMode('practice',{pack:k});
-    b.append(rd,pr);r.append(t,b);box.appendChild(r);
-  });
-}
-const TTS=('speechSynthesis' in window);
-let autoTts=true,ttsVoice='';
-try{autoTts=localStorage.getItem('yantra.autotts')!=='0';ttsVoice=localStorage.getItem('yantra.voice')||''}catch(e){}
-const ttsClean=t=>String(t).replace(/Q(\d+):/g,'Question $1.').replace(/\((?:skip|Get)[^)]*\)/g,'').replace(/[•*#_`🔊]/g,'').replace(/\/10/g,' out of 10').replace(/\n+/g,'. ').replace(/\s+/g,' ').trim();
-function speak(t){
-  if(!TTS)return;
-  try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(ttsClean(t)),v=speechSynthesis.getVoices().find(x=>x.name===ttsVoice);
-    if(v){u.voice=v;u.lang=v.lang}else u.lang=$('vlang').value||'en-IN';u.rate=0.97;speechSynthesis.speak(u)}catch(e){}
-}
-function unlockTts(){if(TTS)try{speechSynthesis.speak(new SpeechSynthesisUtterance(''))}catch(e){}}
-function fillVoices(){
-  const sl=$('ttsv');if(!TTS||!sl)return;
-  const vs=speechSynthesis.getVoices().filter(v=>/^(en|hi|te|ta|kn|ml|bn|mr|gu)/i.test(v.lang));
-  sl.innerHTML='<option value="">Auto</option>'+vs.map(v=>'<option value="'+esc(v.name)+'">'+esc(v.name)+' ('+esc(v.lang)+')</option>').join('');sl.value=ttsVoice;
-}
-if(!TTS){$('ttsrow').style.display='none';$('ttsrow2').style.display='none'}
-else{
-  speechSynthesis.onvoiceschanged=fillVoices;fillVoices();
-  [...$('ttsseg').children].forEach(b=>b.classList.toggle('on',(b.dataset.v==='1')===autoTts));
-  $('ttsseg').onclick=e=>{const v=e.target.dataset&&e.target.dataset.v;if(v===undefined)return;autoTts=v==='1';[...$('ttsseg').children].forEach(b=>b.classList.toggle('on',b===e.target));try{localStorage.setItem('yantra.autotts',v)}catch(_){}if(!autoTts)try{speechSynthesis.cancel()}catch(_){}};
-  $('ttsv').onchange=e=>{ttsVoice=e.target.value;try{localStorage.setItem('yantra.voice',ttsVoice)}catch(_){}};
-}
-packsUi();
 $('m_bank').onclick=()=>startMode('bank');$('m_prac').onclick=()=>startMode('practice');$('m_ask').onclick=()=>startMode('ask');
 /* ---------- Photo capture (reads text from the picture) ---------- */
 function photoCtx(t,q){
