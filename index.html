@@ -24,7 +24,7 @@ button{cursor:pointer;background:none;border:0}
 .pill{border:2px solid #3b2a5c;background:var(--butter);color:#3b2a5c;border-radius:8px;box-shadow:2px 2px 0 #3b2a5c;padding:2px 9px;line-height:1.3}
 .pill:active{transform:translate(2px,2px);box-shadow:none}
 .sp{flex:1}
-select.pill{max-width:34%;appearance:none;-webkit-appearance:none;font-size:15px;padding-right:9px}
+select.pill{max-width:42%;appearance:none;-webkit-appearance:none;font-size:15px;padding-right:9px}
 #chat{flex:1;overflow-y:auto;padding:14px 12px;display:flex;flex-direction:column;gap:14px;min-height:0}
 .msg{max-width:86%;padding:8px 12px;border:2px solid var(--ink);border-radius:12px;line-height:1.15;white-space:pre-wrap;word-wrap:break-word;color:#3b2a5c;box-shadow:3px 3px 0 var(--ink)}
 .msg.user{align-self:flex-end;background:var(--pink)}
@@ -82,9 +82,6 @@ input[type=range]{width:100px;accent-color:#a77bf3}
 .row.col{flex-direction:column;align-items:flex-start;gap:6px}.row b{font-size:17px}
 .btns{display:flex;gap:8px}.pbox{display:none;flex-direction:column;gap:8px}
 .pbox textarea{min-height:140px;background:var(--field);color:var(--ink);border:2px solid var(--ink);border-radius:10px;padding:8px;font:inherit;font-size:16px}
-.av{width:28px;height:28px;padding:0!important;border-radius:50%!important;display:grid;place-items:center;font-size:15px;position:relative;background:var(--lav)!important}
-.av::after{content:"";position:absolute;right:-3px;bottom:-3px;width:9px;height:9px;border-radius:50%;background:#2ecc71;border:2px solid #3b2a5c}
-.pop{position:fixed;top:calc(64px + env(safe-area-inset-top,0px));right:16px;z-index:8;display:none;flex-direction:column;gap:8px;background:var(--win);color:var(--ink);border:3px solid var(--ink);border-radius:12px;box-shadow:4px 4px 0 var(--ink);padding:10px;font-size:16px}.pop.on{display:flex}
 .hwho{font-size:15px;color:var(--mute)}.hwho::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:#2ecc71;margin-right:6px}
 .score{font-family:var(--pixel);font-size:34px}.score small{font-size:16px}
 .meter{height:14px;border:2px solid var(--ink);border-radius:7px;background:var(--field);overflow:hidden}.meter i{display:block;height:100%;background:var(--mint)}
@@ -100,7 +97,6 @@ input[type=range]{width:100px;accent-color:#a77bf3}
     <span class="brand">YANTRA<small>यंत्र</small></span>
     <span class="sp"></span>
     <select class="pill" id="model" aria-label="Choose model"><option value="Llama-3.2-1B-Instruct-q4f32_1-MLC" data-size="about 0.9 GB">Llama 1B</option><option value="Qwen2.5-1.5B-Instruct-q4f32_1-MLC" data-size="about 1.3 GB">Qwen 1.5B</option><option value="Qwen2.5-3B-Instruct-q4f32_1-MLC" data-size="about 2.5 GB">Qwen 3B</option><option value="Qwen2.5-0.5B-Instruct-q4f32_1-MLC" data-size="about 0.4 GB">Qwen 0.5B tiny</option></select>
-    <button class="pill av" id="av" aria-label="Account">?</button>
     <button class="pill" id="gear" aria-label="Open settings">⚙</button>
   </div>
   <div class="status" id="status"></div>
@@ -143,7 +139,6 @@ input[type=range]{width:100px;accent-color:#a77bf3}
     <div class="lnote">PDF, Word (.docx) or text. Files are read on your phone. Scanned PDFs: paste the text instead.</div>
   </div>
 </section>
-<div class="pop" id="pop"><div id="pwho"></div><button class="pill" id="plogout" style="background:var(--sky)">Log out</button></div>
 <section class="win sheet" id="rp">
   <div class="bar"><span class="brand">Resume prep</span><span class="sp"></span><button class="pill" id="rpx" aria-label="Close">✕</button></div>
   <div class="body">
@@ -280,7 +275,7 @@ function setMode(){
 function enter(name){
   user=name;try{localStorage.setItem('yantra.current',name)}catch(e){}
   try{sessions=JSON.parse(localStorage.getItem('yantra.chats.'+name)||'[]')}catch(e){sessions=[]}
-  cur=null;const disp=(users()[name]||{}).name||name;$('who').textContent=disp;$('av').textContent=disp.charAt(0).toUpperCase();$('pwho').textContent='Signed in as '+disp;$('dwho').textContent='Signed in as '+disp;$('login').classList.remove('on');render();
+  cur=null;const disp=(users()[name]||{}).name||name;$('who').textContent=disp;$('dwho').textContent='Signed in as '+disp;$('login').classList.remove('on');render();
 }
 $('lsw').onclick=()=>{mode=mode==='create'?'login':'create';setMode()};
 $('lgo').onclick=async()=>{
@@ -305,9 +300,6 @@ $('lgo').onclick=async()=>{
     }
   }catch(e){err.textContent='Could not save the profile on this phone.'}
 };
-$('av').onclick=e=>{e.stopPropagation();$('pop').classList.toggle('on')};
-document.addEventListener('click',e=>{if(!$('pop').contains(e.target))$('pop').classList.remove('on')});
-$('plogout').onclick=()=>{$('pop').classList.remove('on');$('logout').click()};
 $('lpin').addEventListener('keydown',e=>{if(e.key==='Enter')$('lgo').click()});
 $('logout').onclick=()=>{try{localStorage.removeItem('yantra.current')}catch(e){}user=null;sessions=[];cur=null;$('settings').classList.remove('on');drawer(false);render();showLogin()};
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
