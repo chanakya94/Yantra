@@ -461,6 +461,78 @@ function startMode(mode,o){
   sessions.unshift(x);cur=0;save();$('iv').classList.remove('on');render();
   if(mode==='practice'&&autoTts){unlockTts();speak(x.msgs[0].t)}
 }
+/* ---------- Packs, scoring, progress, read aloud ---------- */
+function topicOf(q){
+  if(/^You mentioned:/.test(q))return 'Your experience';
+  if(/^The role needs:/.test(q))return 'Role fit';
+  if(/hands-on experience with|challenge you solved using|non-technical person/.test(q))return 'Technical skills';
+  return 'HR and behavioral';
+}
+const FILL=/\b(um+|uh+|erm|like|basically|actually|you know|kind of|sort of|literally)\b/gi;
+function scoreAnswer(q,a,d){
+  const w=a.trim().split(/\s+/).filter(Boolean).length,tips=[];
+  const len=w<10?0:w<25?1:w<40?2:w<=160?3:w<=230?2:1;
+  const num=/\d/.test(a)?2:0,res=/\b(result|resulted|improved|reduced|increased|saved|achieved|delivered|launched|impact|outcome|grew|growth|faster|success|successfully|learned)\b|%/i.test(a)?2:0;
+  const I=(a.match(/\bI\b/g)||[]).length,own=I>=3?1.5:I>=1?0.75:0;
+  const vocab=new Set(words(d&&d.resume?d.resume:q)),mine=new Set(words(a).filter(x=>x.length>=5&&vocab.has(x)));
+  const rel=mine.size>=4?1.5:mine.size>=2?0.75:0;
+  const fill=(a.match(FILL)||[]).length,pen=Math.min(1.5,fill*0.3);
+  const score=Math.max(0,Math.min(10,Math.round((len+num+res+own+rel-pen)*10)/10));
+  if(w<25)tips.push('Give more detail. About 40 to 120 words works well.');
+  if(w>230)tips.push('Shorten it. Aim for under two minutes, about 150 words.');
+  if(!num)tips.push('Add a number: a percentage, amount, count or time.');
+  if(!res)tips.push('End with the result or impact of what you did.');
+  if(own===0)tips.push('Say what you did yourself, using “I”.');
+  if(fill>=3)tips.push('Cut filler words like “um”, “like” and “basically”.');
+  if(rel<0.75&&d&&d.resume)tips.push('Mention specifics from your own experience.');
+  return {score,label:score>=8?'Strong':score>=6?'Good':score>=4?'Fair':'Needs work',tips,words:w,fill};
+}
+const PGK=()=>'yantra.prog.'+user;
+function prog(){try{return JSON.parse(localStorage.getItem(PGK())||'{}')}catch(e){return {}}}
+const dk=o=>{const t=new Date(Date.now()-o*864e5);return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0')};
+function logProg(topic,sc){
+  const p=prog();p.days=p.days||{};p.topics=p.topics||{};
+  const d=p.days[dk(0)]=p.days[dk(0)]||{n:0,sum:0};d.n++;d.sum+=sc;
+  const t=p.topics[topic]=p.topics[topic]||{n:0,sum:0};t.n++;t.sum+=sc;
+  p.total=(p.total||0)+1;p.sumAll=(p.sumAll||0)+sc;
+  try{localStorage.setItem(PGK(),JSON.stringify(p))}catch(e){}
+}
+function streakOf(p){const days=p.days||{};let o=(days[dk(0)]&&days[dk(0)].n)?0:1,n=0;while(days[dk(o)]&&days[dk(o)].n){n++;o++}return n}
+function pgRender(){
+  const p=prog(),box=$('pgcard');
+  if(!p.total){box.innerHTML='<div class="card"><b>📈 Your progress</b><div>Answer questions in a Practice interview. Your streak, scores and weak topics will show here.</div></div>';return}
+  const days=p.days||{},st=streakOf(p),td=(days[dk(0)]||{}).n||0,avg=(p.sumAll/p.total).toFixed(1);
+  let wk='';for(let o=6;o>=0;o--){const n=(days[dk(o)]||{}).n||0,L='SMTWTFS'[new Date(Date.now()-o*864e5).getDay()];wk+='<div><i style="height:'+Math.min(34,4+n*6)+'px"></i>'+L+'</div>'}
+  const tp=Object.keys(p.topics||{}).filter(k=>['Your experience','Role fit','Technical skills','HR and behavioral'].includes(k)).map(k=>({k,n:p.topics[k].n,a:p.topics[k].sum/p.topics[k].n})).sort((a,b)=>a.a-b.a).slice(0,6);
+  const weak=tp.find(x=>x.n>=2);
+  box.innerHTML='<div class="card"><b>📈 Your progress</b><div>🔥 '+st+' day streak · '+td+' answers today</div><div>Average score '+avg+'/10 over '+p.total+' answers</div><div class="wk">'+wk+'</div>'
+   +(tp.length?'<div>Topics, weakest first</div>'+tp.map(x=>'<div class="tb"><span style="min-width:120px">'+esc(x.k)+'</span><div class="meter"><i style="width:'+Math.round(x.a*10)+'%"></i></div><span>'+x.a.toFixed(1)+'</span></div>').join(''):'')
+   +(weak?'<button class="pill" id="pgweak" data-t="'+esc(weak.k)+'" style="background:var(--peach)">Practice weakest: '+esc(weak.k)+'</button>':'')+'</div>';
+  const b=$('pgweak');if(b)b.onclick=()=>practiceTopic(b.dataset.t);
+}
+function practiceTopic(name){startMode('practice',{topic:name})}
+const TTS=('speechSynthesis' in window);
+let autoTts=true,ttsVoice='';
+try{autoTts=localStorage.getItem('yantra.autotts')!=='0';ttsVoice=localStorage.getItem('yantra.voice')||''}catch(e){}
+const ttsClean=t=>String(t).replace(/Q(\d+):/g,'Question $1.').replace(/\((?:skip|Get)[^)]*\)/g,'').replace(/[•*#_`🔊]/g,'').replace(/\/10/g,' out of 10').replace(/\n+/g,'. ').replace(/\s+/g,' ').trim();
+function speak(t){
+  if(!TTS)return;
+  try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(ttsClean(t)),v=speechSynthesis.getVoices().find(x=>x.name===ttsVoice);
+    if(v){u.voice=v;u.lang=v.lang}else u.lang=$('vlang').value||'en-IN';u.rate=0.97;speechSynthesis.speak(u)}catch(e){}
+}
+function unlockTts(){if(TTS)try{speechSynthesis.speak(new SpeechSynthesisUtterance(''))}catch(e){}}
+function fillVoices(){
+  const sl=$('ttsv');if(!TTS||!sl)return;
+  const vs=speechSynthesis.getVoices().filter(v=>/^(en|hi|te|ta|kn|ml|bn|mr|gu)/i.test(v.lang));
+  sl.innerHTML='<option value="">Auto</option>'+vs.map(v=>'<option value="'+esc(v.name)+'">'+esc(v.name)+' ('+esc(v.lang)+')</option>').join('');sl.value=ttsVoice;
+}
+if(!TTS){$('ttsrow').style.display='none';$('ttsrow2').style.display='none'}
+else{
+  speechSynthesis.onvoiceschanged=fillVoices;fillVoices();
+  [...$('ttsseg').children].forEach(b=>b.classList.toggle('on',(b.dataset.v==='1')===autoTts));
+  $('ttsseg').onclick=e=>{const v=e.target.dataset&&e.target.dataset.v;if(v===undefined)return;autoTts=v==='1';[...$('ttsseg').children].forEach(b=>b.classList.toggle('on',b===e.target));try{localStorage.setItem('yantra.autotts',v)}catch(_){}if(!autoTts)try{speechSynthesis.cancel()}catch(_){}};
+  $('ttsv').onchange=e=>{ttsVoice=e.target.value;try{localStorage.setItem('yantra.voice',ttsVoice)}catch(_){}};
+}
 $('m_bank').onclick=()=>startMode('bank');$('m_prac').onclick=()=>startMode('practice');$('m_ask').onclick=()=>startMode('ask');
 /* ---------- Photo capture (reads text from the picture) ---------- */
 function photoCtx(t,q){
