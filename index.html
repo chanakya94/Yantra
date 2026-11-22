@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Yantra</title>
+<link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=VT323&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f3e8ff;--dots:#d9c4f7;--win:#fffaf0;--ink:#3b2a5c;--mute:#7a6a9c;--lav:#cdb8ff;--mint:#b9f0d6;--peach:#ffc9b0;--butter:#fff0a8;--pink:#ffb8d9;--sky:#b8e0ff;--field:#ffffff;
+--pixel:"Silkscreen","Courier New",monospace;--mono:"VT323","Courier New",monospace;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1d1535;--dots:#2b2050;--win:#2a1f4a;--ink:#f3e8ff;--mute:#b5a6d9;--field:#382b60}}
+:root[data-theme="dark"]{--bg:#1d1535;--dots:#2b2050;--win:#2a1f4a;--ink:#f3e8ff;--mute:#b5a6d9;--field:#382b60}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:var(--mono);font-size:16px;color:var(--ink);-webkit-tap-highlight-color:transparent;
+background:var(--bg) radial-gradient(var(--dots) 2px,transparent 2.5px) 0 0/18px 18px}
+body{display:flex;flex-direction:column;padding:10px;gap:10px;overflow:hidden}
+button,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0}
+.win{background:var(--win);border:3px solid var(--ink);border-radius:14px;box-shadow:5px 5px 0 var(--ink);overflow:hidden;display:flex;flex-direction:column;min-height:0}
+.bar{display:flex;align-items:center;gap:8px;padding:8px 10px;background:linear-gradient(90deg,var(--lav),var(--pink) 60%,var(--peach));border-bottom:3px solid var(--ink);color:#3b2a5c}
+.brand{font-family:var(--pixel);font-weight:700;font-size:17px;letter-spacing:1px}
+.brand small{font-family:var(--mono);font-size:16px;font-weight:400;margin-left:4px}
+.pill{border:2px solid #3b2a5c;background:var(--butter);color:#3b2a5c;border-radius:8px;box-shadow:2px 2px 0 #3b2a5c;padding:2px 9px;line-height:1.3}
+.pill:active{transform:translate(2px,2px);box-shadow:none}
+.sp{flex:1}
+select.pill{max-width:34%;appearance:none;-webkit-appearance:none;font-size:15px;padding-right:9px}
+#chat{flex:1;overflow-y:auto;padding:14px 12px;display:flex;flex-direction:column;gap:14px;min-height:0}
+.msg{max-width:86%;padding:8px 12px;border:2px solid var(--ink);border-radius:12px;line-height:1.15;white-space:pre-wrap;word-wrap:break-word;color:#3b2a5c;box-shadow:3px 3px 0 var(--ink)}
+.msg.user{align-self:flex-end;background:var(--pink)}
+.msg.bot{align-self:flex-start;background:var(--mint)}
+.file{align-self:flex-end;background:var(--sky);color:#3b2a5c;border:2px dashed var(--ink);border-radius:10px;padding:6px 10px}
+.typing{align-self:flex-start;color:var(--mute)}
+.typing::after{content:"▮";animation:bl 1s steps(2) infinite}
+@keyframes bl{50%{opacity:0}}
+.empty{margin:auto;text-align:center;max-width:290px}
+.sun{width:110px;height:110px;margin:0 auto 14px;border-radius:50%;border:3px solid var(--ink);background:repeating-conic-gradient(var(--peach) 0 15deg,var(--butter) 15deg 30deg);position:relative;animation:spin 40s linear infinite}
+.sun::after{content:"";position:absolute;inset:30px;border-radius:50%;background:var(--lav);border:3px solid var(--ink)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty h1{font-family:var(--pixel);font-size:20px;margin:0 0 6px}
+.empty p{margin:0;color:var(--mute)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:14px}
+.chip{background:var(--sky);color:#3b2a5c;border:2px solid var(--ink);border-radius:8px;padding:2px 10px;box-shadow:2px 2px 0 var(--ink)}
+form{display:flex;align-items:flex-end;gap:8px;padding:10px;border-top:3px solid var(--ink);background:var(--lav)}
+textarea{flex:1;resize:none;max-height:110px;background:var(--field);border:2px solid #3b2a5c;border-radius:10px;padding:8px 10px;outline:none;font-size:17px;color:var(--ink)}
+textarea:focus{box-shadow:0 0 0 3px var(--butter)}
+form .pill{height:40px;font-size:17px;display:grid;place-items:center;padding:0 9px}
+.send{background:var(--mint)!important}
+.note{text-align:center;font-size:16px;color:var(--mute);padding:2px 0 0}
+.scrim{position:fixed;inset:0;background:rgba(40,20,80,.5);opacity:0;pointer-events:none;transition:opacity .2s;z-index:5}
+.scrim.on{opacity:1;pointer-events:auto}
+.drawer{position:fixed;top:0;bottom:0;left:0;width:82%;max-width:320px;transform:translateX(-105%);transition:transform .25s;z-index:6;margin:10px;border-radius:14px}
+.drawer.on{transform:none}
+.drawer .body{padding:10px;display:flex;flex-direction:column;gap:8px;flex:1;min-height:0}
+.new{background:var(--mint);color:#3b2a5c;border:2px solid var(--ink);border-radius:10px;box-shadow:3px 3px 0 var(--ink);padding:8px}
+.hist{flex:1;overflow-y:auto}
+.hist button{display:block;width:100%;text-align:left;padding:7px 8px;border-radius:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hist button.cur{background:var(--butter);color:#3b2a5c;border:2px solid var(--ink)}
+.hist h4{margin:6px 8px;font-weight:400;color:var(--mute)}
+.hrow{display:flex;align-items:center;gap:4px}.hrow .x{width:auto;flex:none;color:var(--mute);padding:4px 8px}
+.sheet{position:fixed;inset:0;z-index:7;transform:translateY(105%);transition:transform .25s;margin:10px;padding-top:env(safe-area-inset-top,0px)}
+.sheet.on{transform:none}
+.sheet .body{padding:12px;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px;border:2px solid var(--ink);border-radius:10px;background:var(--field)}
+.row small{display:block;color:var(--mute);font-size:14px;line-height:1}
+.seg{display:flex;gap:6px}
+.seg button{border:2px solid var(--ink);border-radius:8px;padding:0 8px;background:var(--win)}
+.seg button.on{background:var(--pink);color:#3b2a5c}
+input[type=range]{width:100px;accent-color:#a77bf3}
+.status{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border-bottom:3px solid var(--ink);background:var(--butter);color:#3b2a5c;font-size:15px;line-height:1.1}
+.bar2{flex:1;height:12px;border:2px solid #3b2a5c;border-radius:6px;background:#fff;overflow:hidden;min-width:60px}.bar2 i{display:block;height:100%;width:0;background:var(--mint)}
+.status #pt{flex:2;font-size:15px}
+.login{position:fixed;inset:0;z-index:9;margin:10px;display:none}.login.on{display:flex}
+.lbody{padding:18px 16px;display:flex;flex-direction:column;gap:10px;text-align:center;overflow-y:auto}
+.lbody h1{font-family:var(--pixel);font-size:20px;margin:0}
+.lbody input{background:var(--field);border:2px solid var(--ink);border-radius:10px;padding:10px;font:inherit;font-size:17px;color:var(--ink);outline:none}
+.lbody input:focus{box-shadow:0 0 0 3px var(--butter)}
+.pill.big{padding:8px;font-size:18px;background:var(--mint)}
+.link{color:var(--ink);text-decoration:underline;font-size:16px}
+.lerr{color:#d6336c;min-height:22px}.lnote{color:var(--mute);font-size:14px;margin:0}
+.toast{position:fixed;left:16px;right:16px;bottom:calc(90px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--win);padding:8px 12px;border-radius:10px;z-index:20;display:none;font-size:15px;text-align:center}.toast.on{display:block}
+.row.col{flex-direction:column;align-items:flex-start;gap:6px}.row b{font-size:17px}
+.btns{display:flex;gap:8px}.pbox{display:none;flex-direction:column;gap:8px}
+.pbox textarea{min-height:140px;background:var(--field);color:var(--ink);border:2px solid var(--ink);border-radius:10px;padding:8px;font:inherit;font-size:16px}
+.av{width:28px;height:28px;padding:0!important;border-radius:50%!important;display:grid;place-items:center;font-size:15px;position:relative;background:var(--lav)!important}
+.av::after{content:"";position:absolute;right:-3px;bottom:-3px;width:9px;height:9px;border-radius:50%;background:#2ecc71;border:2px solid #3b2a5c}
+.pop{position:fixed;top:calc(64px + env(safe-area-inset-top,0px));right:16px;z-index:8;display:none;flex-direction:column;gap:8px;background:var(--win);color:var(--ink);border:3px solid var(--ink);border-radius:12px;box-shadow:4px 4px 0 var(--ink);padding:10px;font-size:16px}.pop.on{display:flex}
+.hwho{font-size:15px;color:var(--mute)}.hwho::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:#2ecc71;margin-right:6px}
+.score{font-family:var(--pixel);font-size:34px}.score small{font-size:16px}
+.meter{height:14px;border:2px solid var(--ink);border-radius:7px;background:var(--field);overflow:hidden}.meter i{display:block;height:100%;background:var(--mint)}
+.kw{display:flex;flex-wrap:wrap;gap:6px}.kw span{border:2px solid var(--ink);border-radius:8px;padding:0 7px;font-size:14px;color:#3b2a5c}.kw .ok{background:var(--mint)}.kw .no{background:var(--pink)}
+.card{border:2px solid var(--ink);border-radius:10px;background:var(--field);padding:10px;display:flex;flex-direction:column;gap:8px;font-size:15px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<section class="win" style="flex:1">
+  <div class="bar">
+    <button class="pill" id="menu" aria-label="Open memory">☰</button>
+    <span class="brand">YANTRA<small>यंत्र</small></span>
+    <span class="sp"></span>
+    <select class="pill" id="model" aria-label="Choose model"><option value="Llama-3.2-1B-Instruct-q4f32_1-MLC" data-size="about 0.9 GB">Llama 1B</option><option value="Qwen2.5-1.5B-Instruct-q4f32_1-MLC" data-size="about 1.3 GB">Qwen 1.5B</option><option value="Qwen2.5-3B-Instruct-q4f32_1-MLC" data-size="about 2.5 GB">Qwen 3B</option><option value="Qwen2.5-0.5B-Instruct-q4f32_1-MLC" data-size="about 0.4 GB">Qwen 0.5B tiny</option></select>
+    <button class="pill av" id="av" aria-label="Account">?</button>
+    <button class="pill" id="gear" aria-label="Open settings">⚙</button>
+  </div>
+  <div class="status" id="status"></div>
+  <main id="chat"></main>
+  <form id="f">
+    <button type="button" class="pill" id="attach" aria-label="Upload document">📎</button>
+    <input type="file" id="file" accept=".pdf,.doc,.docx,.txt" hidden>
+    <button type="button" class="pill" id="cam" aria-label="Take or choose a photo">📷</button>
+    <input type="file" id="camf" accept="image/*" hidden>
+    <button type="button" class="pill" id="mic" aria-label="Voice input">🎤</button>
+    <textarea id="in" rows="1" placeholder="Ask Yantra…"></textarea>
+    <button class="pill send" aria-label="Send">▶</button>
+  </form>
+</section>
+<div class="note">Chats and the model stay on this phone.</div>
+
+<section class="win login" id="login">
+  <div class="bar"><span class="brand">YANTRA</span><small>यंत्र</small></div>
+  <div class="lbody">
+    <div class="sun"></div>
+    <h1 id="lt">Welcome back</h1>
+    <input id="lname" placeholder="Your name" autocomplete="off" autocapitalize="words">
+    <input id="lpin" type="password" placeholder="PIN or password (4+ characters)" autocomplete="off">
+    <div class="lerr" id="lerr"></div>
+    <button class="pill big" id="lgo">Log in</button>
+    <button class="link" id="lsw">Create a new profile</button>
+    <p class="lnote">Saved only on this phone. If you forget the PIN, it can’t be recovered.</p>
+  </div>
+</section>
+<section class="win sheet" id="iv">
+  <div class="bar"><span class="brand">Interview</span><span class="sp"></span><button class="pill" id="ivx" aria-label="Close">✕</button></div>
+  <div class="body">
+    <div class="row col"><b>1. Your resume</b><small id="rs"></small><div class="btns"><button class="pill" id="rup">Upload file</button><button class="pill" id="rpaste">Paste text</button></div></div>
+    <div class="row col"><b>2. Job description</b><small id="js"></small><div class="btns"><button class="pill" id="jup">Upload file</button><button class="pill" id="jpaste">Paste text</button></div></div>
+    <input type="file" id="ivf" accept=".pdf,.docx,.txt" hidden>
+    <div class="pbox" id="pbox"><textarea id="ivt" placeholder="Paste the text here"></textarea><button class="pill" id="pbs" style="background:var(--mint)">Save text</button></div>
+    <button class="pill big" id="m_bank">📚 Question bank (many)</button>
+    <button class="pill big" id="m_prac" style="background:var(--butter)">🎤 Practice interview</button>
+    <button class="pill big" id="m_ask" style="background:var(--sky)">🎧 Answer coach (hear a question)</button>
+    <div class="lnote">PDF, Word (.docx) or text. Files are read on your phone. Scanned PDFs: paste the text instead.</div>
+  </div>
+</section>
+<div class="pop" id="pop"><div id="pwho"></div><button class="pill" id="plogout" style="background:var(--sky)">Log out</button></div>
+<section class="win sheet" id="rp">
+  <div class="bar"><span class="brand">Resume prep</span><span class="sp"></span><button class="pill" id="rpx" aria-label="Close">✕</button></div>
+  <div class="body">
+    <div class="row col"><b>1. Your resume</b><small id="rps"></small><div class="btns"><button class="pill" id="rpu">Upload file</button><button class="pill" id="rpp">Paste text</button></div></div>
+    <div class="row col"><b>2. Job description</b><small id="rjs"></small><div class="btns"><button class="pill" id="rju">Upload file</button><button class="pill" id="rjp">Paste text</button></div></div>
+    <input type="file" id="rpf" accept=".pdf,.docx,.txt" hidden>
+    <div class="pbox" id="rpbox"><textarea id="rpt" placeholder="Paste the text here"></textarea><button class="pill" id="rpsv" style="background:var(--mint)">Save text</button></div>
+    <button class="pill big" id="rpats" style="background:var(--butter)">📊 Check ATS match</button>
+    <div id="rpout"></div>
+    <button class="pill big" id="rptl" style="background:var(--sky)">✨ Tailor my resume</button>
+    <div class="lnote" id="rpstat"></div>
+    <div class="pbox" id="rpres"><b>Your tailored resume (you can edit it)</b><textarea id="rpedit" style="min-height:320px"></textarea><div class="btns"><button class="pill" id="rpcopy">Copy</button><button class="pill" id="rpdl" style="background:var(--mint)">Download .docx</button></div></div>
+    <div class="lnote">The score is an estimate, not a real ATS. Check every line before you send your resume, and only keep facts that are true.</div>
+  </div>
+</section>
+<div class="toast" id="toast"></div>
+<div class="scrim" id="scrim"></div>
+<aside class="win drawer" id="drawer">
+  <div class="bar"><span class="brand">Smriti</span><small>(memory)</small></div>
+  <div class="body"><div class="hwho" id="dwho"></div><button class="new" id="new">+ New chat</button>
+  <button class="new" id="ivopen" style="background:var(--peach)">🎯 Interview prep</button>
+  <button class="new" id="rpopen" style="background:var(--lav)">📝 Resume prep</button><div class="hist" id="hist"></div></div>
+</aside>
+
+<section class="win sheet" id="settings">
+  <div class="bar"><span class="brand">Settings</span><span class="sp"></span><button class="pill" id="close" aria-label="Close settings">✕</button></div>
+  <div class="body">
+    <div class="row">Theme<div class="seg" id="theme"><button data-t="auto" class="on">Auto</button><button data-t="light">Light</button><button data-t="dark">Dark</button></div></div>
+    <div class="row"><div>Text size<small>Chat messages</small></div><input type="range" id="size" min="13" max="22" value="16"></div>
+    <div class="row"><div>Offline mode<small>Nothing leaves your phone</small></div><b>On</b></div>
+    <div class="row"><div>Models<small>Downloads come in a later step</small></div><span>0</span></div>
+    <div class="row"><div>Voice language<small>For the 🎤 button</small></div><select class="pill" id="vlang"><option value="en-IN">English (India)</option><option value="hi-IN">Hindi</option><option value="en-US">English (US)</option></select></div>
+    <div class="row"><div>Signed in<small id="who"></small></div><button class="pill" id="logout" style="background:var(--sky)">Log out</button></div>
+    <div class="row">Clear all chats<button class="pill" id="clear" style="background:var(--pink)">Clear</button></div>
+  </div>
+</section>
+
+<script>
+const $=id=>document.getElementById(id);
+const chat=$('chat'),inp=$('in');
+let user=null,sessions=[];
+function save(){if(!user)return;try{localStorage.setItem('yantra.chats.'+user,JSON.stringify(sessions))}catch(e){}}
+let cur=null,fs=16;
+/* Reply engine: Phase 3 replaces this with the offline model */
+const WLLM='https://esm.run/@mlc-ai/web-llm@0.2.83';
+let wl=null,engine=null,loadedId=null,busy=false;
+const sel=$('model'),st=$('status');
+const setStatus=h=>{st.innerHTML=h};
+const lib=async()=>wl||(wl=await import(WLLM));
+const label=()=>sel.selectedOptions[0].textContent;
+function pickStatus(){
+  if(engine&&loadedId===sel.value){setStatus('<span>✔ Offline model ready: '+label()+'</span>');return}
+  setStatus('<span>'+label()+' is not on this phone yet ('+sel.selectedOptions[0].dataset.size+').</span><button class="pill" id="get">Get model</button>');
+  $('get').onclick=loadModel;
+}
+async function loadModel(){
+  if(busy)return;busy=true;const id=sel.value;
+  if(!navigator.gpu){setStatus('<span>No WebGPU here. Update iOS and open Yantra in Safari.</span>');busy=false;return}
+  try{
+    try{localStorage.setItem('yantra.busy','load')}catch(e){}
+    setStatus('<span id="pt">Starting…</span><div class="bar2"><i id="pb"></i></div>');
+    const m=await lib();
+    if(!m.prebuiltAppConfig.model_list.some(x=>x.model_id===id))throw new Error('This model is not in the library');
+    if(engine){try{await engine.unload()}catch(e){}engine=null;loadedId=null}
+    engine=await m.CreateMLCEngine(id,{initProgressCallback:p=>{const t=$('pt'),b=$('pb');if(t)t.textContent=String(p.text).slice(0,60);if(b)b.style.width=Math.round(p.progress*100)+'%'}},{context_window_size:1024});
+    loadedId=id;try{localStorage.removeItem('yantra.busy');localStorage.setItem('yantra.model',id)}catch(e){}
+    try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
+  }catch(e){
+    engine=null;busy=false;try{localStorage.removeItem('yantra.busy')}catch(_){}
+    setStatus('<span>Could not load: '+String(e&&e.message||e).slice(0,90)+'</span><button class="pill" id="get">Retry</button>');$('get').onclick=loadModel;return;
+  }
+  busy=false;pickStatus();
+}
+sel.onchange=pickStatus;
+async function respond(msgs,onTok){
+  const sv=sessions.find(x=>x.msgs===msgs);if(sv&&sv.mode){try{return await iv(sv,msgs,onTok)}catch(e){return 'Something went wrong: '+String(e&&e.message||e).slice(0,100)}}
+  if(sv&&sv.photo&&engine&&loadedId===sel.value){const q=(msgs.filter(m=>m.r==='user').pop()||{}).t||'';try{return await gen('You answer questions about text that was read from a photo. Use the PHOTO TEXT. If the answer is not in it, say so. Keep answers short. If the question is not about the photo, just answer normally.','PHOTO TEXT:\n'+photoCtx(sv.photo,q)+'\n\nQUESTION: '+q,220,onTok)}catch(e){return 'Something went wrong: '+String(e&&e.message||e).slice(0,100)}}
+  if(!engine||loadedId!==sel.value)return 'Tap Get model above first. It downloads once, then Yantra works offline.';
+  const h=[{role:'system',content:'You are Yantra, a friendly assistant running offline on the user\'s iPhone. Keep answers short and clear.'}];
+  msgs.filter(m=>m.r!=='file').slice(-4).forEach(m=>h.push({role:m.r==='bot'?'assistant':'user',content:String(m.t).slice(0,500)}));
+  try{
+    try{await engine.resetChat()}catch(e){}
+    try{localStorage.setItem('yantra.busy','gen')}catch(e){}
+    let out='';
+    const ch=await engine.chat.completions.create({messages:h,stream:true,temperature:0.7,max_tokens:300});
+    for await(const c of ch){out+=(c.choices[0]&&c.choices[0].delta&&c.choices[0].delta.content)||'';onTok(out)}
+    try{localStorage.removeItem('yantra.busy')}catch(e){}
+    return out||'(no reply)';
+  }catch(e){try{localStorage.removeItem('yantra.busy')}catch(_){}return 'Something went wrong: '+String(e&&e.message||e).slice(0,100)}
+}
+pickStatus();
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+const replies=['Here is a simple way to see it. Once an offline model is connected, I will answer right here on your phone.','Good question. In the finished app this reply is made on your iPhone with no internet.','Got it. Tell me more and I will break it into clear steps.'];
+function render(){
+  chat.innerHTML='';const s=sessions[cur];
+  if(!s||!s.msgs.length){
+    chat.innerHTML='<div class="empty"><div class="sun"></div><h1>Namaste</h1><p>I am Yantra, your pocket mind. Ask me anything or hand me a document.</p><div class="chips"><span class="chip">Summarize a PDF</span><span class="chip">Draft an email</span><span class="chip">Explain a topic</span></div></div>';
+    chat.querySelectorAll('.chip').forEach(c=>c.onclick=()=>{inp.value=c.textContent;inp.focus()});
+  } else s.msgs.forEach(add);
+  hist();
+}
+function add(m){const d=document.createElement('div');d.className=m.r==='file'?'file':'msg '+m.r;d.textContent=m.t;d.style.fontSize=fs+'px';chat.appendChild(d);chat.scrollTop=chat.scrollHeight}
+function hist(){$('hist').innerHTML=sessions.length?'<h4>Recent</h4>':'<h4>No chats yet</h4>';sessions.forEach((s,i)=>{const w=document.createElement('div');w.className='hrow';const b=document.createElement('button');b.textContent=s.title;if(i===cur)b.className='cur';b.onclick=()=>{cur=i;render();drawer(false)};const x=document.createElement('button');x.className='x';x.textContent='✕';x.setAttribute('aria-label','Delete chat');x.onclick=()=>{sessions.splice(i,1);if(cur===i)cur=null;else if(cur>i)cur--;save();render()};w.append(b,x);$('hist').appendChild(w)})}
+function push(t,r){if(cur===null){sessions.unshift({title:'New chat',msgs:[]});cur=0}const s=sessions[cur];if(s.title==='New chat'&&r==='user')s.title=t.slice(0,30);s.msgs.push({r,t});save()}
+$('f').onsubmit=e=>{e.preventDefault();const t=inp.value.trim();if(!t)return;push(t,'user');inp.value='';inp.style.height='auto';render();
+  const ty=document.createElement('div');ty.className='typing';ty.textContent='Yantra is thinking';chat.appendChild(ty);chat.scrollTop=chat.scrollHeight;
+  const i=cur;respond(sessions[i].msgs,p=>{ty.className='msg bot';ty.style.fontSize=fs+'px';ty.textContent=p;chat.scrollTop=chat.scrollHeight}).then(t=>{sessions[i].msgs.push({r:'bot',t});save();if(cur===i)render();if(ivAuto&&askMode())setTimeout(startRec,500)})};
+inp.oninput=()=>{inp.style.height='auto';inp.style.height=Math.min(inp.scrollHeight,110)+'px'};
+$('attach').onclick=()=>$('file').click();
+$('file').onchange=e=>{const f=e.target.files[0];if(!f)return;push('📄 '+f.name,'file');push('Received '+f.name+'. In the finished app I will read it on your phone and answer questions about it.','bot');render();e.target.value=''};
+function drawer(on){$('drawer').classList.toggle('on',on);$('scrim').classList.toggle('on',on)}
+$('menu').onclick=()=>drawer(true);$('scrim').onclick=()=>drawer(false);
+$('new').onclick=()=>{cur=null;render();drawer(false)};
+$('gear').onclick=()=>$('settings').classList.add('on');$('close').onclick=()=>$('settings').classList.remove('on');
+$('theme').onclick=e=>{const t=e.target.dataset.t;if(!t)return;[...$('theme').children].forEach(b=>b.classList.toggle('on',b===e.target));t==='auto'?document.documentElement.removeAttribute('data-theme'):document.documentElement.setAttribute('data-theme',t)};
+$('size').oninput=e=>{fs=+e.target.value;document.querySelectorAll('.msg,.file').forEach(m=>m.style.fontSize=fs+'px')};
+$('clear').onclick=()=>{sessions=[];cur=null;save();render();$('settings').classList.remove('on')};
+const enc=new TextEncoder();
+const users=()=>{try{return JSON.parse(localStorage.getItem('yantra.users')||'{}')}catch(e){return {}}};
+async function hashPin(pin,salt){const k=await crypto.subtle.importKey('raw',enc.encode(pin),'PBKDF2',false,['deriveBits']);const b=await crypto.subtle.deriveBits({name:'PBKDF2',salt:enc.encode(salt),iterations:100000,hash:'SHA-256'},k,256);return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
+let mode='login';
+function showLogin(){
+  const has=Object.keys(users()).length>0;mode=has?'login':'create';setMode();
+  $('lname').value='';$('lpin').value='';$('lerr').textContent='';$('login').classList.add('on');
+}
+function setMode(){
+  const c=mode==='create',has=Object.keys(users()).length>0;
+  $('lt').textContent=c?'Create your profile':'Welcome back';
+  $('lgo').textContent=c?'Create profile':'Log in';
+  $('lsw').textContent=c?'I already have a profile':'Create a new profile';
+  $('lsw').style.display=(c&&!has)?'none':'';
+  $('lerr').textContent='';
+}
+function enter(name){
+  user=name;try{localStorage.setItem('yantra.current',name)}catch(e){}
+  try{sessions=JSON.parse(localStorage.getItem('yantra.chats.'+name)||'[]')}catch(e){sessions=[]}
+  cur=null;const disp=(users()[name]||{}).name||name;$('who').textContent=disp;$('av').textContent=disp.charAt(0).toUpperCase();$('pwho').textContent='Signed in as '+disp;$('dwho').textContent='Signed in as '+disp;$('login').classList.remove('on');render();
+}
+$('lsw').onclick=()=>{mode=mode==='create'?'login':'create';setMode()};
+$('lgo').onclick=async()=>{
+  const raw=$('lname').value.trim(),pin=$('lpin').value,key=raw.toLowerCase(),err=$('lerr');
+  if(!raw){err.textContent='Enter your name.';return}
+  if(pin.length<4){err.textContent='Use at least 4 characters.';return}
+  if(!(window.crypto&&crypto.subtle)){err.textContent='This browser cannot lock profiles. Open Yantra in Safari.';return}
+  const all=users();
+  try{
+    if(mode==='create'){
+      if(all[key]){err.textContent='That name is taken on this phone. Log in instead.';return}
+      const salt=Array.from(crypto.getRandomValues(new Uint8Array(12))).map(x=>x.toString(16).padStart(2,'0')).join('');
+      const first=Object.keys(all).length===0;
+      all[key]={name:raw,salt,hash:await hashPin(pin,salt)};
+      localStorage.setItem('yantra.users',JSON.stringify(all));
+      if(first){const old=localStorage.getItem('yantra.chats');if(old){localStorage.setItem('yantra.chats.'+key,old);localStorage.removeItem('yantra.chats')}}
+      enter(key);
+    }else{
+      const u=all[key];
+      if(!u||await hashPin(pin,u.salt)!==u.hash){err.textContent='Wrong name or PIN.';return}
+      enter(key);
+    }
+  }catch(e){err.textContent='Could not save the profile on this phone.'}
+};
+$('av').onclick=e=>{e.stopPropagation();$('pop').classList.toggle('on')};
+document.addEventListener('click',e=>{if(!$('pop').contains(e.target))$('pop').classList.remove('on')});
+$('plogout').onclick=()=>{$('pop').classList.remove('on');$('logout').click()};
+$('lpin').addEventListener('keydown',e=>{if(e.key==='Enter')$('lgo').click()});
+$('logout').onclick=()=>{try{localStorage.removeItem('yantra.current')}catch(e){}user=null;sessions=[];cur=null;$('settings').classList.remove('on');drawer(false);render();showLogin()};
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let rec=null,listening=false;
+try{const v=localStorage.getItem('yantra.vlang');if(v)$('vlang').value=v}catch(e){}
+$('vlang').onchange=e=>{try{localStorage.setItem('yantra.vlang',e.target.value)}catch(_){}};
+function toast(t){const e=$('toast');e.textContent=t;e.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('on'),4500)}
+let ivAuto=false;
+const askMode=()=>{const x=sessions[cur];return !!(x&&x.mode==='ask')};
+function startRec(){
+  if(!SR){toast('Voice input is not available here. Tap the 🎤 on your iPhone keyboard instead.');ivAuto=false;return}
+  if(listening)return;
+  rec=new SR();rec.lang=$('vlang').value;rec.interimResults=true;rec.continuous=false;
+  const base=ivAuto?'':(inp.value?inp.value+' ':'');
+  rec.onstart=()=>{listening=true;$('mic').style.background='var(--pink)'};
+  rec.onresult=e=>{let t='';for(let i=0;i<e.results.length;i++)t+=e.results[i][0].transcript;inp.value=base+t;inp.oninput()};
+  rec.onerror=e=>{if(e.error==='no-speech'||e.error==='aborted')return;ivAuto=false;toast(e.error==='not-allowed'||e.error==='service-not-allowed'?'Microphone or speech permission is off. Allow it in iPhone Settings, or use the keyboard 🎤.':'Voice problem ('+e.error+'). Try the keyboard 🎤 instead.')};
+  rec.onend=()=>{listening=false;$('mic').style.background='';
+    if(ivAuto&&askMode()){if(inp.value.trim())$('f').dispatchEvent(new Event('submit',{cancelable:true}));else setTimeout(startRec,300)}else inp.focus()};
+  try{rec.start()}catch(e){ivAuto=false;toast('Could not start the microphone.')}
+}
+$('mic').onclick=()=>{if(listening&&rec){ivAuto=false;rec.stop();return}ivAuto=askMode();startRec()};
+
+/* ---------- Interview prep ---------- */
+const STOP=new Set('the a an and or of to in for on with at by from is are was were be as it this that your you we our will can may must have has had not but if their they them these those about into over such more most other than then also etc who what when where how all any each per via new'.split(' '));
+const COMMON=new Set('experience strong ability responsibilities requirements skills knowledge work looking join preferred required good excellent team role company years year including understanding working proven demonstrated familiarity education degree bachelor master candidate position job apply benefits location engineer engineers developer developers manager'.split(' '));
+const CLASSICS=['Tell me about yourself.','Why are you interested in this role?','Why do you want to work for our company?','What are your biggest strengths?','What is your biggest weakness, and how are you working on it?','Describe a project you are most proud of.','Tell me about a time you faced a difficult challenge at work. How did you handle it?','Tell me about a time you failed. What did you learn?','How do you handle tight deadlines and pressure?','Describe a time you disagreed with a teammate or manager.','How do you prioritize when you have many tasks?','Tell me about a time you took the initiative.','How do you handle feedback or criticism?','Describe a time you worked in a team to reach a goal.','What motivates you at work?','Where do you see yourself in five years?','Why should we hire you?','Why did you leave your last job, or why are you looking for a change?','How do you keep your skills up to date?','Tell me about a time you learned something new quickly.','How do you handle a mistake you made at work?','What salary do you expect, and how did you arrive at that number?','Tell me about a time you explained something complex to someone.','What would you do in your first 30 days in this role?','Do you have any questions for us?'];
+const cut=(t,n)=>t.length>n?t.slice(0,n-1)+'…':t;
+const words=t=>(String(t).toLowerCase().match(/[a-z0-9+#.]{2,}/g)||[]).map(w=>w.replace(/^\.+|\.+$/g,'')).filter(w=>w.length>1&&!STOP.has(w));
+const lines=t=>String(t).split(/\n+|(?<=[.!?])\s+(?=[A-Z•\-])/).map(x=>x.replace(/^[\s•\-*·▪●◦]+/,'').trim()).filter(x=>x.length>=25&&x.length<=320);
+function terms(jd,res){
+  const cnt={},re=/\b[A-Z][A-Za-z0-9+#.]*(?:\s[A-Z][A-Za-z0-9+#.]*)?\b/g;
+  String(jd).split(/\n+/).forEach(l=>{const rest=l.trim().split(/\s+/).slice(1).join(' ');(rest.match(re)||[]).forEach(w=>{w=w.replace(/\.$/,'');const k=w.toLowerCase();if(w.length<2||STOP.has(k)||COMMON.has(k))return;cnt[w]=(cnt[w]||0)+1})});
+  const rl=String(res).toLowerCase();
+  return Object.keys(cnt).map(w=>[w,cnt[w]+(rl.includes(w.toLowerCase())?3:0)]).sort((a,b)=>b[1]-a[1]).slice(0,18).map(x=>x[0]);
+}
+function buildBank(res,jd){
+  const jdTerms=terms(jd||res,res),tl=jdTerms.map(t=>t.toLowerCase());
+  const sc=l=>{const lo=l.toLowerCase();return tl.filter(t=>lo.includes(t)).length};
+  const rtop=lines(res).map(l=>[l,sc(l)]).sort((a,b)=>b[1]-a[1]).slice(0,12).map(x=>x[0]);
+  const rq=rtop.map(l=>'You mentioned: “'+cut(l,110)+'” Walk me through it: your role, what you did and the result.');
+  const jq=lines(jd||'').slice(0,10).map(l=>'The role needs: “'+cut(l,110)+'” Where have you shown this?');
+  const sq=[];jdTerms.forEach(t=>sq.push('Tell me about your hands-on experience with '+t+'.','Describe a challenge you solved using '+t+'.','How would you explain '+t+' to a non-technical person?'));
+  const out=CLASSICS.slice(0,4),n=Math.max(rq.length,jq.length,Math.ceil(sq.length/3));
+  for(let i=0;i<n;i++)[rq[i],jq[i],sq[i*3],sq[i*3+1],sq[i*3+2]].forEach(q=>q&&out.push(q));
+  out.push(...CLASSICS.slice(4));
+  return [...new Set(out)];
+}
+function pick(q,d){
+  const qs=new Set(words(q)),sc=l=>words(l).filter(w=>qs.has(w)).length;
+  const all=lines(d.resume||''),top=all.map(l=>[l,sc(l)]).sort((a,b)=>b[1]-a[1]).filter(x=>x[1]>0).slice(0,3).map(x=>x[0]);
+  return {notes:(top.length?top:all.slice(0,3)).join('\n').slice(0,800),role:(lines(d.jd||'')[0]||'').slice(0,140)};
+}
+async function gen(sys,usr,max,onTok,pre){
+  try{await engine.resetChat()}catch(e){}
+  try{localStorage.setItem('yantra.busy','gen')}catch(e){}
+  let out='';
+  try{
+    const ch=await engine.chat.completions.create({messages:[{role:'system',content:sys},{role:'user',content:usr}],stream:true,temperature:0.7,max_tokens:max});
+    for await(const c of ch){out+=(c.choices[0]&&c.choices[0].delta&&c.choices[0].delta.content)||'';if(onTok)onTok((pre||'')+out)}
+  }finally{try{localStorage.removeItem('yantra.busy')}catch(e){}}
+  return out.trim();
+}
+function summary(s){
+  s.done=true;const n=s.fb.length;
+  if(!n)return 'Interview ended. You did not answer any questions.';
+  return 'Interview finished. You answered '+n+' questions. Recap:\n\n'+s.fb.map((x,i)=>(i+1)+'. '+cut(x.q,90)+'\nCoach: '+cut(x.f,220)).join('\n\n')+'\n\nTip: practise again on the questions where the coach said to improve.';
+}
+const needModel='Tap Get model first (yellow bar). It downloads once, then works offline.';
+async function iv(s,msgs,onTok){
+  const d=docs(),text=((msgs.filter(m=>m.r==='user').pop()||{}).t||'').trim(),cmd=text.toLowerCase();
+  if(s.mode==='bank'){
+    if(cmd!=='more')return 'Type more and I will write extra questions with the AI, based on your resume.';
+    if(!engine)return needModel;
+    const all=lines(d.resume||''),pool=all.slice(s.mi,s.mi+3);
+    if(!pool.length){s.mi=0;return 'I have used every line of your resume. Type more again to start over with new wording.'}
+    s.mi+=3;let acc='',k=s.bank.length;
+    for(const l of pool){
+      const t=await gen('You write interview questions.','Write 3 different interview questions an interviewer could ask based on this line from a candidate resume. One question per line. No numbering.\n'+l,120,null);
+      t.split('\n').map(x=>x.replace(/^[\s\d.\-*)]+/,'').trim()).filter(x=>x.length>12&&/\?$/.test(x)).forEach(x=>{if(!s.bank.includes(x)){s.bank.push(x);k++;acc+=k+'. '+x+'\n\n'}});
+      onTok('More questions:\n\n'+acc);
+    }
+    return acc?'More questions:\n\n'+acc+'Type more for even more.':'The AI did not make good questions that time. Type more to try again.';
+  }
+  if(s.mode==='ask'){
+    if(!engine)return needModel;
+    const c=pick(text,d);
+    return gen('You help a job candidate answer an interview question out loud. Write the answer as the candidate, in first person, 4 to 6 short sentences, confident and specific. Use only facts from CANDIDATE NOTES. If the notes do not cover it, give a sensible general answer and do not invent employers, numbers or degrees.','CANDIDATE NOTES:\n'+c.notes+'\n\nROLE: '+c.role+'\n\nQUESTION: '+text,220,onTok);
+  }
+  if(s.mode==='practice'){
+    if(s.done)return 'This interview is finished. Start a new one from Interview prep.';
+    if(cmd==='end')return summary(s);
+    const q=s.bank[s.n];let f='';
+    if(cmd==='skip')f='Skipped.';
+    else if(!engine)f='(Get the model for coaching feedback.)';
+    else{const c=pick(q+' '+text,d);f=await gen('You are a friendly interview coach. In 2 or 3 short sentences, say one thing that was good and one way to improve the answer. Do not ask a new question.','QUESTION: '+q+'\nANSWER: '+text.slice(0,600)+'\nCANDIDATE NOTES: '+c.notes.slice(0,400),150,onTok)}
+    s.fb.push({q,a:text,f});s.n++;
+    if(s.n>=s.bank.length)return f+'\n\n'+summary(s);
+    return f+'\n\nQ'+(s.n+1)+': '+s.bank[s.n]+'\n(skip = next question, end = finish)';
+  }
+  return '';
+}
+const IVK=()=>'yantra.iv.'+user;
+function docs(){try{return JSON.parse(localStorage.getItem(IVK())||'{}')}catch(e){return {}}}
+function ivUi(){const d=docs();$('rs').textContent=d.resume?d.resume.length+' characters saved':'Nothing added yet';$('js').textContent=d.jd?d.jd.length+' characters saved (optional)':'Nothing added yet (optional)'}
+function setDoc(k,t){const d=docs();d[k]=String(t).slice(0,12000);try{localStorage.setItem(IVK(),JSON.stringify(d))}catch(e){toast('Not enough storage to save that.')}ivUi();rpUi()}
+let tgt='resume';
+$('ivopen').onclick=()=>{drawer(false);ivUi();$('iv').classList.add('on')};
+$('ivx').onclick=()=>$('iv').classList.remove('on');
+$('rup').onclick=()=>{tgt='resume';$('ivf').click()};$('jup').onclick=()=>{tgt='jd';$('ivf').click()};
+function pasteBox(k){tgt=k;$('pbox').style.display='flex';$('ivt').value=docs()[k]||'';$('ivt').focus()}
+$('rpaste').onclick=()=>pasteBox('resume');$('jpaste').onclick=()=>pasteBox('jd');
+$('pbs').onclick=()=>{setDoc(tgt,$('ivt').value);$('pbox').style.display='none';toast('Saved.')};
+const loadScript=u=>new Promise((ok,no)=>{if(document.querySelector('script[src="'+u+'"]'))return ok();const e=document.createElement('script');e.src=u;e.onload=ok;e.onerror=no;document.head.appendChild(e)});
+async function readFile(f){
+  const n=f.name.toLowerCase();
+  if(n.endsWith('.txt'))return f.text();
+  if(n.endsWith('.docx')){await loadScript('https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js');return (await mammoth.extractRawText({arrayBuffer:await f.arrayBuffer()})).value}
+  if(n.endsWith('.pdf')){
+    const base='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/',pdf=await import(base+'pdf.min.mjs');
+    pdf.GlobalWorkerOptions.workerSrc=base+'pdf.worker.min.mjs';
+    const doc=await pdf.getDocument({data:await f.arrayBuffer()}).promise;let out='';
+    for(let i=1;i<=Math.min(doc.numPages,8);i++){const c=await(await doc.getPage(i)).getTextContent();let ly=null;c.items.forEach(it=>{const y=it.transform[5];if(ly!==null&&Math.abs(y-ly)>2)out+='\n';out+=it.str+' ';ly=y});out+='\n'}
+    return out;
+  }
+  throw new Error('type');
+}
+$('ivf').onchange=async e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;toast('Reading '+f.name+'…');
+  try{const t=await readFile(f);if(t.trim().length<40)throw new Error('empty');setDoc(tgt,t);toast('Saved '+t.length+' characters.')}
+  catch(err){toast('Could not read that file. If it is a scanned PDF or the internet is off, paste the text instead.')}
+};
+function startMode(mode){
+  const d=docs();if(!d.resume){toast('Add your resume first.');return}
+  const bank=buildBank(d.resume,d.jd||''),names={bank:'Question bank',practice:'Practice interview',ask:'Answer coach'};
+  const x={title:'🎯 '+names[mode],mode,msgs:[],bank,n:0,fb:[],mi:0};
+  if(mode==='bank')x.msgs.push({r:'bot',t:'Here are '+bank.length+' questions made from your resume'+(d.jd?' and the job description':'')+':\n\n'+bank.map((q,i)=>(i+1)+'. '+q).join('\n\n')+'\n\nType more and I will write extra questions with the AI.'});
+  if(mode==='practice')x.msgs.push({r:'bot',t:'Practice interview. I ask, you answer by typing or 🎤, and I coach you. Type skip for the next question and end to finish.\n\nQ1: '+bank[0]});
+  if(mode==='ask')x.msgs.push({r:'bot',t:'Answer coach. Tap 🎤 and say the interviewer’s question, or type it. I draft an answer from your resume and keep listening for the next question. Tap 🎤 again to stop.'});
+  sessions.unshift(x);cur=0;save();$('iv').classList.remove('on');render();
+}
+$('m_bank').onclick=()=>startMode('bank');$('m_prac').onclick=()=>startMode('practice');$('m_ask').onclick=()=>startMode('ask');
+/* ---------- Photo capture (reads text from the picture) ---------- */
+function photoCtx(t,q){
+  const ch=[];String(t).split(/\n+/).forEach(l=>{l=l.trim();if(!l)return;const last=ch[ch.length-1];if(last!==undefined&&last.length<260)ch[ch.length-1]=last+'\n'+l;else ch.push(l)});
+  const qs=new Set(words(q)),sc=c=>words(c).filter(w=>qs.has(w)).length;
+  const ranked=ch.map((c,i)=>[c,sc(c),i]).sort((a,b)=>b[1]-a[1]);
+  const top=(ranked[0]&&ranked[0][1]>0)?ranked.filter(x=>x[1]>0).slice(0,3).sort((a,b)=>a[2]-b[2]).map(x=>x[0]):ch.slice(0,3);
+  return top.join('\n').slice(0,850);
+}
+async function downscale(f){
+  const url=URL.createObjectURL(f);
+  const img=await new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=no;i.src=url});
+  const sc=Math.min(1,1600/Math.max(img.width,img.height)),c=document.createElement('canvas');
+  c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+  URL.revokeObjectURL(url);return c;
+}
+async function readPhoto(f){
+  if(!user)return;
+  if(cur===null||!sessions[cur]||sessions[cur].mode){sessions.unshift({title:'📷 Photo',msgs:[]});cur=0}
+  const x=sessions[cur];
+  x.msgs.push({r:'file',t:'📷 Photo added. Getting ready to read it…'});render();
+  const note=chat.lastChild;let w=null;
+  try{
+    const cv=await downscale(f);
+    await loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js');
+    w=await Tesseract.createWorker('eng',1,{langPath:'https://cdn.jsdelivr.net/npm/@tesseract.js-data/eng/4.0.0_best_int',logger:m=>{if(note&&m.status)note.textContent='📷 '+m.status+(m.progress?' '+Math.round(m.progress*100)+'%':'')}});
+    const r=await w.recognize(cv);
+    const t=(r.data.text||'').replace(/[ \t]+/g,' ').replace(/\n{3,}/g,'\n\n').trim();
+    x.msgs.pop();
+    if(t.length<15)x.msgs.push({r:'bot',t:'I could not find readable text in that photo. This offline version reads text only (documents, signs, screens, books). It cannot describe objects or scenes. Try again closer, in good light.'});
+    else{x.photo=t.slice(0,4000);x.msgs.push({r:'file',t:'📷 Photo read ('+t.length+' characters)'});x.msgs.push({r:'bot',t:'I read this from the photo:\n\n'+cut(t,500)+'\n\nAsk me anything about it, for example “summarize this” or “what is the total?”.'})}
+  }catch(err){
+    x.msgs.pop();x.msgs.push({r:'bot',t:'Could not read the photo. The text reader downloads once, so connect to the internet the first time. ('+String(err&&err.message||err).slice(0,60)+')'});
+  }
+  try{if(w)await w.terminate()}catch(e){}
+  save();render();
+}
+$('cam').onclick=()=>$('camf').click();
+$('camf').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)readPhoto(f)};
+/* ---------- Resume prep ---------- */
+const GEN=new Set('ability using use etc responsible ensure support provide develop develops including across within opportunity environment business related relevant plus seeking able well based help make part like need needs should would could'.split(' '));
+const SEC=/^\s*(professional summary|summary|objective|profile|career objective|technical skills|skills|core competencies|work experience|professional experience|experience|employment history|projects|academic projects|education|certifications|achievements|awards|internships)\s*:?\s*$/i;
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const strip=l=>String(l).replace(/^[\s•\-*·▪●◦–]+/,'').trim();
+function atsKeys(jd,res){
+  const cnt={};
+  words(jd).forEach(w=>{if(w.length<3||COMMON.has(w)||GEN.has(w))return;cnt[w]=(cnt[w]||0)+1});
+  const t=terms(jd,res).map(x=>x.toLowerCase());
+  const freq=Object.keys(cnt).filter(w=>cnt[w]>=2).sort((a,b)=>cnt[b]-cnt[a]).slice(0,20);
+  return [...new Set([...t,...freq])].slice(0,30);
+}
+function atsScore(res,jd){
+  const keys=atsKeys(jd,res),lo=res.toLowerCase();
+  const hit=keys.filter(k=>lo.includes(k)),miss=keys.filter(k=>!lo.includes(k));
+  const kw=keys.length?hit.length/keys.length:0;
+  const secs=[[/experience|employment|internship/i,'Experience'],[/education/i,'Education'],[/skills|competenc/i,'Skills'],[/summary|objective|profile/i,'Summary']];
+  const have=secs.filter(x=>x[0].test(res)),secOk=have.length/secs.length;
+  const email=/[\w.+-]+@[\w-]+\.[\w.]+/.test(res),phone=/\+?\d[\d\s-]{8,}\d/.test(res);
+  const bl=res.split('\n').filter(l=>l.trim().length>25),num=bl.filter(l=>/\d|%/.test(l)).length;
+  const impact=Math.min(1,num/Math.max(3,bl.length*0.3));
+  const score=Math.round(kw*60+secOk*20+((email?0.5:0)+(phone?0.5:0))*10+impact*10);
+  const tips=[];
+  secs.forEach(x=>{if(!x[0].test(res))tips.push('Add a clear "'+x[1]+'" heading.')});
+  if(!email)tips.push('Add your email address.');if(!phone)tips.push('Add your phone number.');
+  if(impact<0.7)tips.push('Add numbers (%, amounts, counts) to more bullets.');
+  if(keys.length<8)tips.push('The job description looks short. Paste the full text for a better score.');
+  if(miss.length)tips.push('Add the missing keywords, but only where they are true.');
+  return {score,keys,hit,miss,secOk,email,phone,num,tips};
+}
+function showAts(r,box){
+  const chip=(a,c)=>a.map(k=>'<span class="'+c+'">'+esc(k)+'</span>').join('');
+  box.innerHTML='<div class="card"><div class="score">'+r.score+'<small>/100</small></div><div class="meter"><i style="width:'+r.score+'%"></i></div><small>ATS-style match score (my estimate, not a real ATS)</small>'
+  +'<div>Keywords found: '+r.hit.length+' of '+r.keys.length+'</div>'
+  +'<div>Sections: '+Math.round(r.secOk*4)+' of 4 · Email '+(r.email?'✓':'✗')+' · Phone '+(r.phone?'✓':'✗')+' · Lines with numbers: '+r.num+'</div>'
+  +(r.hit.length?'<div>Found</div><div class="kw">'+chip(r.hit,'ok')+'</div>':'')
+  +(r.miss.length?'<div>Missing (add only if true)</div><div class="kw">'+chip(r.miss,'no')+'</div>':'')
+  +(r.tips.length?'<div>Tips</div><div>'+r.tips.map(t=>'• '+esc(t)).join('<br>')+'</div>':'')+'</div>';
+}
+function parseResume(t){
+  const secs=[{h:'',lines:[]}];
+  String(t).split('\n').map(l=>l.replace(/\s+$/,'')).forEach(l=>{const m=l.trim().match(SEC);if(m)secs.push({h:m[1].toUpperCase(),lines:[]});else secs[secs.length-1].lines.push(l)});
+  return secs;
+}
+const secKind=h=>!h?'head':/SUMMARY|OBJECTIVE|PROFILE/.test(h)?'summary':/SKILL|COMPETEN/.test(h)?'skills':/EXPERIENCE|EMPLOYMENT|PROJECT|INTERNSHIP/.test(h)?'exp':'other';
+const nums=t=>String(t).match(/\d[\d,.%]*/g)||[];
+function okRewrite(o,n){return nums(n).every(x=>o.includes(x))&&nums(o).every(x=>n.includes(x))&&n.length>=8&&n.length<=o.length*1.7+60}
+function reorderSkills(body,jd){
+  const jl=jd.toLowerCase(),items=[...new Set(body.split(/[,;|•\n]+/).map(x=>strip(x)).filter(x=>x.length>1&&x.length<40))];
+  if(items.length<3)return body;
+  const hit=items.filter(x=>jl.includes(x.toLowerCase())),rest=items.filter(x=>!jl.includes(x.toLowerCase()));
+  return [...hit,...rest].join(', ');
+}
+async function mkSummary(res,a,role){
+  const ls=lines(res).filter(l=>!/@|\d{8,}/.test(l)).slice(0,6).join('\n').slice(0,700);
+  for(let t=0;t<2;t++){
+    const o=await gen('You write a resume summary of 2 to 3 sentences. Use only facts from NOTES. Do not mention years of experience or any number unless it appears in NOTES. No first-person pronouns. Use a keyword from KEYWORDS only if NOTES support it.','TARGET ROLE: '+role+'\nNOTES:\n'+ls+'\nKEYWORDS: '+a.hit.slice(0,8).join(', '),150,null);
+    if(o.length>40&&nums(o).every(x=>res.includes(x)))return o.replace(/\n+/g,' ');
+  }
+  return null;
+}
+async function rewriteBullets(ls,ctx){
+  const idx=[];ls.forEach((l,i)=>{if(strip(l).length>25)idx.push(i)});
+  const take=idx.slice(0,Math.max(0,ctx.left));ctx.left-=take.length;
+  const out=ls.map(l=>strip(l).length>25?'• '+strip(l):l);
+  for(let b=0;b<take.length;b+=4){
+    const grp=take.slice(b,b+4),orig=grp.map(i=>strip(ls[i]));ctx.prog();
+    const t=await gen('You improve resume bullets. Rewrite each bullet to be clear and achievement-focused, starting with a strong action verb. Keep every fact, number, tool and name exactly. Add nothing new. Use a keyword from KEYWORDS only if it truly fits that bullet. Output one bullet per line, in the same order, no numbering.','KEYWORDS: '+ctx.keys.join(', ')+'\nBULLETS:\n'+orig.join('\n'),260,null);
+    const nw=t.split('\n').map(x=>strip(x.replace(/^\d+[.)]\s*/,''))).filter(x=>x.length>5);
+    if(nw.length===orig.length)grp.forEach((i,k)=>{if(okRewrite(orig[k],nw[k]))out[i]='• '+nw[k]});
+  }
+  return out;
+}
+/* tiny .docx writer (no library needed) */
+function crc32(u){let t=crc32.t;if(!t){t=crc32.t=[];for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}}let r=-1;for(let i=0;i<u.length;i++)r=t[(r^u[i])&255]^(r>>>8);return (r^-1)>>>0}
+function zipStore(files){
+  const enc=new TextEncoder(),parts=[],cd=[];let off=0;
+  files.forEach(f=>{
+    const n=enc.encode(f.name),d=enc.encode(f.text),crc=crc32(d),sz=d.length;
+    const h=new DataView(new ArrayBuffer(30));h.setUint32(0,0x04034b50,true);h.setUint16(4,20,true);h.setUint16(6,0x0800,true);h.setUint16(12,0x21,true);h.setUint32(14,crc,true);h.setUint32(18,sz,true);h.setUint32(22,sz,true);h.setUint16(26,n.length,true);
+    parts.push(new Uint8Array(h.buffer),n,d);
+    const c=new DataView(new ArrayBuffer(46));c.setUint32(0,0x02014b50,true);c.setUint16(4,20,true);c.setUint16(6,20,true);c.setUint16(8,0x0800,true);c.setUint16(14,0x21,true);c.setUint32(16,crc,true);c.setUint32(20,sz,true);c.setUint32(24,sz,true);c.setUint16(28,n.length,true);c.setUint32(42,off,true);
+    cd.push(new Uint8Array(c.buffer),n);off+=30+n.length+sz;
+  });
+  const cdSize=cd.reduce((a,x)=>a+x.length,0),e=new DataView(new ArrayBuffer(22));
+  e.setUint32(0,0x06054b50,true);e.setUint16(8,files.length,true);e.setUint16(10,files.length,true);e.setUint32(12,cdSize,true);e.setUint32(16,off,true);
+  return new Blob([...parts,...cd,new Uint8Array(e.buffer)],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+}
+const xe=t=>String(t).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+function makeDocx(text){
+  let first=true;
+  const paras=String(text).split('\n').map(l=>{
+    const t=l.trim();if(!t)return '<w:p><w:pPr><w:spacing w:after="60"/></w:pPr></w:p>';
+    const head=SEC.test(t)||(t.length<=30&&/[A-Z]/.test(t)&&t===t.toUpperCase()&&!/[a-z]/.test(t)&&!first);
+    const sz=first?32:head?24:21,b=(first||head)?'<w:b/>':'',sp=head?'<w:spacing w:before="200" w:after="60"/>':'<w:spacing w:after="40"/>';
+    first=false;
+    return '<w:p><w:pPr>'+sp+'</w:pPr><w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/>'+b+'<w:sz w:val="'+sz+'"/></w:rPr><w:t xml:space="preserve">'+xe(t)+'</w:t></w:r></w:p>';
+  }).join('');
+  const hd='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+  return zipStore([
+    {name:'[Content_Types].xml',text:hd+'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>'},
+    {name:'_rels/.rels',text:hd+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>'},
+    {name:'word/document.xml',text:hd+'<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'+paras+'<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1000" w:right="1000" w:bottom="1000" w:left="1000" w:header="708" w:footer="708" w:gutter="0"/></w:sectPr></w:body></w:document>'}
+  ]);
+}
+async function saveDocx(text){
+  const blob=makeDocx(text),file=new File([blob],'Tailored-Resume.docx',{type:blob.type});
+  try{if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:'Tailored resume'});return}}catch(e){if(e&&e.name==='AbortError')return}
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='Tailored-Resume.docx';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},4000);
+}
+let rpbusy=false,rtgt='resume';
+function rpUi(){const d=docs();$('rps').textContent=d.resume?d.resume.length+' characters saved':'Nothing added yet';$('rjs').textContent=d.jd?d.jd.length+' characters saved':'Nothing added yet'}
+$('rpopen').onclick=()=>{drawer(false);rpUi();$('rp').classList.add('on')};
+$('rpx').onclick=()=>$('rp').classList.remove('on');
+$('rpu').onclick=()=>{rtgt='resume';$('rpf').click()};$('rju').onclick=()=>{rtgt='jd';$('rpf').click()};
+function rpPaste(k){rtgt=k;$('rpbox').style.display='flex';$('rpt').value=docs()[k]||'';$('rpt').focus()}
+$('rpp').onclick=()=>rpPaste('resume');$('rjp').onclick=()=>rpPaste('jd');
+$('rpsv').onclick=()=>{setDoc(rtgt,$('rpt').value);$('rpbox').style.display='none';toast('Saved.')};
+$('rpf').onchange=async e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;toast('Reading '+f.name+'…');
+  try{const t=await readFile(f);if(t.trim().length<40)throw new Error('empty');setDoc(rtgt,t);toast('Saved '+t.length+' characters.')}
+  catch(err){toast('Could not read that file. Paste the text instead.')}
+};
+$('rpats').onclick=()=>{const d=docs();if(!d.resume||!d.jd){toast('Add your resume and the job description first.');return}showAts(atsScore(d.resume,d.jd),$('rpout'))};
+$('rptl').onclick=async()=>{
+  if(rpbusy)return;const d=docs();
+  if(!d.resume||!d.jd){toast('Add your resume and the job description first.');return}
+  if(!engine){toast(needModel);return}
+  rpbusy=true;const st=$('rpstat'),res=d.resume,jd=d.jd,a=atsScore(res,jd),secs=parseResume(res);
+  const ctx={left:8,n:0,keys:a.miss.slice(0,8).concat(a.hit.slice(0,4)),prog(){ctx.n++;st.textContent='Rewriting your bullets… step '+ctx.n}};
+  try{
+    st.textContent='Writing your summary…';
+    const sum=await mkSummary(res,a,(lines(jd)[0]||'the role').slice(0,100));
+    const out=[];let head='';
+    for(const x of secs){
+      const k=secKind(x.h),raw=x.lines.join('\n').trim();
+      if(k==='head'){head=raw;continue}
+      let body=raw;
+      if(k==='summary'&&sum)body=sum;
+      else if(k==='skills')body=reorderSkills(raw,jd);
+      else if(k==='exp')body=(await rewriteBullets(x.lines,ctx)).join('\n').trim();
+      out.push({h:x.h,body});
+    }
+    if(sum&&!out.some(o=>secKind(o.h)==='summary'))out.unshift({h:'SUMMARY',body:sum});
+    const text=head+'\n\n'+out.map(o=>o.h+'\n'+o.body).join('\n\n');
+    $('rpedit').value=text.trim();$('rpres').style.display='flex';
+    const b=atsScore(text,jd);showAts(b,$('rpout'));
+    st.textContent='Done. ATS-style score: '+a.score+' → '+b.score+'. Read every line and keep only what is true.';
+  }catch(err){st.textContent='Something went wrong: '+String(err&&err.message||err).slice(0,80)}
+  rpbusy=false;
+};
+$('rpcopy').onclick=()=>{try{navigator.clipboard.writeText($('rpedit').value).then(()=>toast('Copied.'),()=>toast('Could not copy. Select the text and copy it.'))}catch(e){toast('Could not copy. Select the text and copy it.')}};
+$('rpdl').onclick=()=>saveDocx($('rpedit').value);
+function autoModel(){
+  let b=null,m=null;try{b=localStorage.getItem('yantra.busy');m=localStorage.getItem('yantra.model')}catch(e){}
+  if(b){try{localStorage.removeItem('yantra.busy')}catch(e){}
+    setStatus('<span>Yantra closed while '+(b==='gen'?'thinking':'loading')+', probably out of memory. Close other apps, then try again.</span><button class="pill" id="get">Get model</button>');$('get').onclick=loadModel;return}
+  if(m&&navigator.gpu&&[...sel.options].some(o=>o.value===m)){sel.value=m;pickStatus();loadModel()}
+}
+function boot(){const c=localStorage.getItem('yantra.current'),a=users();if(c&&a[c])enter(c);else showLogin();addLight().then(autoModel)}
+async function addLight(){
+  try{if(localStorage.getItem('yantra.v')!=='3'){localStorage.removeItem('yantra.model');localStorage.setItem('yantra.v','3')}}catch(e){}
+  try{const ad=await navigator.gpu.requestAdapter();
+    if(ad&&ad.features.has('shader-f16')){const o=document.createElement('option');o.value='Llama-3.2-1B-Instruct-q4f16_1-MLC';o.dataset.size='about 0.7 GB';o.textContent='Llama 1B Light';sel.insertBefore(o,sel.firstChild);sel.value=o.value}
+  }catch(e){}
+  pickStatus();
+}
+boot();
+</script>
+</body>
+</html>
