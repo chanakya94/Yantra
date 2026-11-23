@@ -101,7 +101,7 @@ input[type=range]{width:100px;accent-color:#a77bf3}
     <button class="pill" id="menu" aria-label="Open memory">☰</button>
     <span class="brand">YANTRA<small>यंत्र</small></span>
     <span class="sp"></span>
-    <select class="pill" id="model" aria-label="Choose model"><option value="Llama-3.2-1B-Instruct-q4f32_1-MLC" data-size="about 0.9 GB">Llama 1B</option><option value="Qwen2.5-1.5B-Instruct-q4f32_1-MLC" data-size="about 1.3 GB">Qwen 1.5B</option><option value="Qwen2.5-3B-Instruct-q4f32_1-MLC" data-size="about 2.5 GB">Qwen 3B</option><option value="Qwen2.5-0.5B-Instruct-q4f32_1-MLC" data-size="about 0.4 GB">Qwen 0.5B tiny</option></select>
+    <select class="pill" id="model" aria-label="Choose model"><option value="qwen35-08b" data-pat="^Qwen3\.5-0\.8B" data-size="about 0.6 to 0.8 GB">Qwen3.5 0.8B</option><option value="qwen35-2b" data-pat="^Qwen3\.5-2B" data-size="about 1.3 to 1.5 GB">Qwen3.5 2B</option><option value="qwen35-4b" data-pat="^Qwen3\.5-4B" data-size="about 2.7 to 3.1 GB. Heavy: may close the app">Qwen3.5 4B (heavy)</option><option value="gemma4-e2b" data-pat="gemma.?4.*e2b" data-size="about 2 to 2.6 GB. Experimental">Gemma 4 E2B (new)</option><option value="phi4-mini" data-pat="^Phi-4-mini" data-size="about 2.3 to 2.5 GB. Heavy: may close the app">Phi-4-mini (heavy)</option></select>
     <button class="pill" id="gear" aria-label="Open settings">⚙</button>
   </div>
   <div class="status" id="status"></div>
@@ -143,6 +143,7 @@ input[type=range]{width:100px;accent-color:#a77bf3}
     <button class="pill big" id="m_prac" style="background:var(--butter)">🎤 Practice interview</button>
     <button class="pill big" id="m_ask" style="background:var(--sky)">🎧 Answer coach (hear a question)</button>
     <div class="lnote">PDF, Word (.docx) or text. Files are read on your phone. Scanned PDFs: paste the text instead.</div>
+    <button class="pill" id="licbtn" style="align-self:flex-start">📄 Licenses</button>
   </div>
 </section>
 <section class="win sheet" id="rp">
@@ -160,6 +161,10 @@ input[type=range]{width:100px;accent-color:#a77bf3}
     <div class="pbox" id="rpres"><b>Pick a template</b><div class="btns" id="rptpl"><button class="pill" data-t="modern">Modern</button><button class="pill" data-t="creative">Creative</button></div><div id="rpprev"></div><b>Edit the text (the preview updates)</b><textarea id="rpedit" style="min-height:320px"></textarea><div class="btns"><button class="pill" id="rpcopy">Copy</button><button class="pill" id="rpdl" style="background:var(--mint)">Download .docx</button></div></div>
     <div class="lnote">The score is an estimate, not a real ATS. Check every line before you send your resume, and only keep facts that are true.</div>
   </div>
+</section>
+<section class="win sheet" id="lic">
+  <div class="bar"><span class="brand">Licenses</span><span class="sp"></span><button class="pill" id="licx" aria-label="Close">✕</button></div>
+  <div class="body" id="licbody"></div>
 </section>
 <div class="toast" id="toast"></div>
 <div class="scrim" id="scrim"></div>
@@ -192,8 +197,8 @@ let user=null,sessions=[];
 function save(){if(!user)return;try{localStorage.setItem('yantra.chats.'+user,JSON.stringify(sessions))}catch(e){}}
 let cur=null,fs=16;
 /* Reply engine: Phase 3 replaces this with the offline model */
-const WLLM='https://esm.run/@mlc-ai/web-llm@0.2.83';
-let wl=null,engine=null,loadedId=null,busy=false;
+const WLLM='https://esm.run/@mlc-ai/web-llm@0.2.87';
+let wl=null,engine=null,loadedId=null,busy=false,thinkOff=false;
 const sel=$('model'),st=$('status');
 const setStatus=h=>{st.innerHTML=h};
 const lib=async()=>wl||(wl=await import(WLLM));
@@ -203,16 +208,31 @@ function pickStatus(){
   setStatus('<span>'+label()+' is not on this phone yet ('+sel.selectedOptions[0].dataset.size+').</span><button class="pill" id="get">Get model</button>');
   $('get').onclick=loadModel;
 }
+const stripThink=t=>String(t).replace(/<think>[\s\S]*?<\/think>/g,'').replace(/<think>[\s\S]*$/,'').replace(/^\s+/,'');
+async function hasF16(){try{const ad=await navigator.gpu.requestAdapter();return !!(ad&&ad.features.has('shader-f16'))}catch(e){return false}}
+function resolveModel(m,pat,f16){
+  const re=new RegExp(pat,'i'),all=m.prebuiltAppConfig.model_list.map(x=>x.model_id).filter(i=>re.test(i)&&!/vision|embed/i.test(i)).sort((a,b)=>a.length-b.length);
+  if(!all.length)throw new Error('This model is not in the library yet');
+  const hit=all.find(i=>i.includes(f16?'q4f16_1':'q4f32_1'))||(f16?all[0]:null);
+  if(!hit)throw new Error('This model needs a graphics feature your phone does not report');
+  return hit;
+}
+async function complete(req){
+  try{return await engine.chat.completions.create(thinkOff?Object.assign({},req,{extra_body:{enable_thinking:false}}):req)}
+  catch(e){if(thinkOff&&/thinking|extra_body/i.test(String(e&&e.message||e))){thinkOff=false;return await engine.chat.completions.create(req)}throw e}
+}
 async function loadModel(){
-  if(busy)return;busy=true;const id=sel.value;
+  if(busy)return;busy=true;const id=sel.value;let mid=id;
   if(!navigator.gpu){setStatus('<span>No WebGPU here. Update iOS and open Yantra in Safari.</span>');busy=false;return}
   try{
     try{localStorage.setItem('yantra.busy','load')}catch(e){}
     setStatus('<span id="pt">Starting…</span><div class="bar2"><i id="pb"></i></div>');
     const m=await lib();
-    if(!m.prebuiltAppConfig.model_list.some(x=>x.model_id===id))throw new Error('This model is not in the library');
+    mid=resolveModel(m,sel.selectedOptions[0].dataset.pat,await hasF16());thinkOff=/Qwen3/i.test(mid);
     if(engine){try{await engine.unload()}catch(e){}engine=null;loadedId=null}
-    engine=await m.CreateMLCEngine(id,{initProgressCallback:p=>{const t=$('pt'),b=$('pb');if(t)t.textContent=String(p.text).slice(0,60);if(b)b.style.width=Math.round(p.progress*100)+'%'}},{context_window_size:1024});
+    const cb={initProgressCallback:p=>{const t=$('pt'),b=$('pb');if(t)t.textContent=String(p.text).slice(0,60);if(b)b.style.width=Math.round(p.progress*100)+'%'}};
+    try{engine=await m.CreateMLCEngine(mid,cb,{context_window_size:1024})}
+    catch(e1){if(/f16|shader|not in the library/i.test(String(e1&&e1.message||e1)))throw e1;engine=await m.CreateMLCEngine(mid,cb)}
     loadedId=id;try{localStorage.removeItem('yantra.busy');localStorage.setItem('yantra.model',id)}catch(e){}
     try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
   }catch(e){
@@ -232,9 +252,10 @@ async function respond(msgs,onTok){
     try{await engine.resetChat()}catch(e){}
     try{localStorage.setItem('yantra.busy','gen')}catch(e){}
     let out='';
-    const ch=await engine.chat.completions.create({messages:h,stream:true,temperature:0.7,max_tokens:300});
-    for await(const c of ch){out+=(c.choices[0]&&c.choices[0].delta&&c.choices[0].delta.content)||'';onTok(out)}
+    const ch=await complete({messages:h,stream:true,temperature:0.7,max_tokens:300});
+    for await(const c of ch){out+=(c.choices[0]&&c.choices[0].delta&&c.choices[0].delta.content)||'';onTok(stripThink(out))}
     try{localStorage.removeItem('yantra.busy')}catch(e){}
+    out=stripThink(out);
     return out||'(no reply)';
   }catch(e){try{localStorage.removeItem('yantra.busy')}catch(_){}return 'Something went wrong: '+String(e&&e.message||e).slice(0,100)}
 }
@@ -368,10 +389,10 @@ async function gen(sys,usr,max,onTok,pre){
   try{localStorage.setItem('yantra.busy','gen')}catch(e){}
   let out='';
   try{
-    const ch=await engine.chat.completions.create({messages:[{role:'system',content:sys},{role:'user',content:usr}],stream:true,temperature:0.7,max_tokens:max});
-    for await(const c of ch){out+=(c.choices[0]&&c.choices[0].delta&&c.choices[0].delta.content)||'';if(onTok)onTok((pre||'')+out)}
+    const ch=await complete({messages:[{role:'system',content:sys},{role:'user',content:usr}],stream:true,temperature:0.7,max_tokens:max});
+    for await(const c of ch){out+=(c.choices[0]&&c.choices[0].delta&&c.choices[0].delta.content)||'';if(onTok)onTok((pre||'')+stripThink(out))}
   }finally{try{localStorage.removeItem('yantra.busy')}catch(e){}}
-  return out.trim();
+  return stripThink(out).trim();
 }
 function summary(s){
   s.done=true;const n=s.fb.length;
@@ -859,6 +880,31 @@ function rpPrev(){
 $('rptpl').onclick=e=>{const t=e.target.dataset&&e.target.dataset.t;if(!t)return;tpl=t;try{localStorage.setItem('yantra.tpl',t)}catch(_){}rpPrev()};
 let pvT=null;$('rpedit').oninput=()=>{clearTimeout(pvT);pvT=setTimeout(rpPrev,500)};
 $('rpfmt').onclick=()=>{const d=docs();if(!d.resume){toast('Add your resume first.');return}$('rpedit').value=d.resume.replace(/\r/g,'').trim();$('rpres').style.display='flex';rpPrev()};
+const LIC=[
+ ['AI models (downloaded to your phone)',[
+  ['Qwen3.5 (0.8B, 2B, 4B)','Apache License 2.0','Made by Alibaba Cloud (Qwen team).'],
+  ['Gemma 4 E2B','Apache License 2.0','Made by Google.'],
+  ['Phi-4-mini','MIT License','Made by Microsoft.']]],
+ ['Tools that run inside Yantra',[
+  ['WebLLM','Apache License 2.0','Runs the AI on your phone. By MLC AI.'],
+  ['pdf.js','Apache License 2.0','Reads PDF files. By Mozilla.'],
+  ['Mammoth','BSD 2-Clause License','Reads Word (.docx) files.'],
+  ['Tesseract.js and Tesseract OCR data','Apache License 2.0','Reads text from photos.'],
+  ['Silkscreen and VT323 fonts','SIL Open Font License 1.1','Yantra’s retro lettering, from Google Fonts.']]]
+];
+(function(){
+  const box=$('licbody');
+  LIC.forEach(g=>{
+    const h=document.createElement('b');h.textContent=g[0];box.appendChild(h);
+    g[1].forEach(r=>{const d=document.createElement('div');d.className='row col';
+      const a=document.createElement('b');a.textContent=r[0];const l=document.createElement('div');l.textContent=r[1];
+      const n=document.createElement('small');n.textContent=r[2];d.append(a,l,n);box.appendChild(d)});
+  });
+  const t=document.createElement('div');t.className='lnote';
+  t.textContent='These are short summaries. Please read each project’s own license text for the full terms. Names and logos belong to their owners.';box.appendChild(t);
+  $('licbtn').onclick=()=>{$('iv').classList.remove('on');$('lic').classList.add('on')};
+  $('licx').onclick=()=>{$('lic').classList.remove('on');$('iv').classList.add('on')};
+})();
 function autoModel(){
   let b=null,m=null;try{b=localStorage.getItem('yantra.busy');m=localStorage.getItem('yantra.model')}catch(e){}
   if(b){try{localStorage.removeItem('yantra.busy')}catch(e){}
@@ -867,10 +913,7 @@ function autoModel(){
 }
 function boot(){const c=localStorage.getItem('yantra.current'),a=users();if(c&&a[c])enter(c);else showLogin();addLight().then(autoModel)}
 async function addLight(){
-  try{if(localStorage.getItem('yantra.v')!=='3'){localStorage.removeItem('yantra.model');localStorage.setItem('yantra.v','3')}}catch(e){}
-  try{const ad=await navigator.gpu.requestAdapter();
-    if(ad&&ad.features.has('shader-f16')){const o=document.createElement('option');o.value='Llama-3.2-1B-Instruct-q4f16_1-MLC';o.dataset.size='about 0.7 GB';o.textContent='Llama 1B Light';sel.insertBefore(o,sel.firstChild);sel.value=o.value}
-  }catch(e){}
+  try{if(localStorage.getItem('yantra.v')!=='4'){localStorage.removeItem('yantra.model');localStorage.setItem('yantra.v','4')}}catch(e){}
   pickStatus();
 }
 boot();
