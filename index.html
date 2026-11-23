@@ -101,7 +101,7 @@ input[type=range]{width:100px;accent-color:#a77bf3}
     <button class="pill" id="menu" aria-label="Open memory">☰</button>
     <span class="brand">YANTRA<small>यंत्र</small></span>
     <span class="sp"></span>
-    <select class="pill" id="model" aria-label="Choose model"><option value="qwen35-08b" data-pat="^Qwen3\.5-0\.8B" data-size="about 0.6 to 0.8 GB">Qwen3.5 0.8B</option><option value="qwen35-2b" data-pat="^Qwen3\.5-2B" data-size="about 1.3 to 1.5 GB">Qwen3.5 2B</option><option value="qwen35-4b" data-pat="^Qwen3\.5-4B" data-size="about 2.7 to 3.1 GB. Heavy: may close the app">Qwen3.5 4B (heavy)</option><option value="gemma4-e2b" data-pat="gemma.?4.*e2b" data-size="about 2 to 2.6 GB. Experimental">Gemma 4 E2B (new)</option><option value="phi4-mini" data-pat="^Phi-4-mini" data-size="about 2.3 to 2.5 GB. Heavy: may close the app">Phi-4-mini (heavy)</option></select>
+    <select class="pill" id="model" aria-label="Choose model"><option value="qwen35-08b" data-pat="^Qwen3\.5-0\.8B" data-size="about 0.6 to 0.8 GB">Qwen3.5 0.8B</option><option value="qwen35-2b" data-pat="^Qwen3\.5-2B" data-size="about 1.3 to 1.5 GB">Qwen3.5 2B</option></select>
     <button class="pill" id="gear" aria-label="Open settings">⚙</button>
   </div>
   <div class="status" id="status"></div>
@@ -134,7 +134,6 @@ input[type=range]{width:100px;accent-color:#a77bf3}
 <section class="win sheet" id="iv">
   <div class="bar"><span class="brand">Interview</span><span class="sp"></span><button class="pill" id="ivx" aria-label="Close">✕</button></div>
   <div class="body">
-    <div id="pgcard"></div>
     <div class="row col"><b>1. Your resume</b><small id="rs"></small><div class="btns"><button class="pill" id="rup">Upload file</button><button class="pill" id="rpaste">Paste text</button></div></div>
     <div class="row col"><b>2. Job description</b><small id="js"></small><div class="btns"><button class="pill" id="jup">Upload file</button><button class="pill" id="jpaste">Paste text</button></div></div>
     <input type="file" id="ivf" accept=".pdf,.docx,.txt" hidden>
@@ -143,7 +142,6 @@ input[type=range]{width:100px;accent-color:#a77bf3}
     <button class="pill big" id="m_prac" style="background:var(--butter)">🎤 Practice interview</button>
     <button class="pill big" id="m_ask" style="background:var(--sky)">🎧 Answer coach (hear a question)</button>
     <div class="lnote">PDF, Word (.docx) or text. Files are read on your phone. Scanned PDFs: paste the text instead.</div>
-    <button class="pill" id="licbtn" style="align-self:flex-start">📄 Licenses</button>
   </div>
 </section>
 <section class="win sheet" id="rp">
@@ -172,7 +170,8 @@ input[type=range]{width:100px;accent-color:#a77bf3}
   <div class="bar"><span class="brand">Smriti</span><small>(memory)</small></div>
   <div class="body"><div class="hwho" id="dwho"></div><button class="new" id="new">+ New chat</button>
   <button class="new" id="ivopen" style="background:var(--peach)">🎯 Interview prep</button>
-  <button class="new" id="rpopen" style="background:var(--lav)">📝 Resume prep</button><div class="hist" id="hist"></div></div>
+  <button class="new" id="rpopen" style="background:var(--lav)">📝 Resume prep</button><div class="hist" id="hist"></div>
+    <button class="new" id="licbtn" style="background:var(--butter);padding:5px;font-size:14px;margin:0">📄 Licenses</button></div>
 </aside>
 
 <section class="win sheet" id="settings">
@@ -198,13 +197,13 @@ function save(){if(!user)return;try{localStorage.setItem('yantra.chats.'+user,JS
 let cur=null,fs=16;
 /* Reply engine: Phase 3 replaces this with the offline model */
 const WLLM='https://esm.run/@mlc-ai/web-llm@0.2.87';
-let wl=null,engine=null,loadedId=null,busy=false,thinkOff=false;
+let wl=null,engine=null,loadedId=null,busy=false,thinkOff=false,loadedTag='';
 const sel=$('model'),st=$('status');
 const setStatus=h=>{st.innerHTML=h};
 const lib=async()=>wl||(wl=await import(WLLM));
 const label=()=>sel.selectedOptions[0].textContent;
 function pickStatus(){
-  if(engine&&loadedId===sel.value){setStatus('<span>✔ Offline model ready: '+label()+'</span>');return}
+  if(engine&&loadedId===sel.value){setStatus('<span>✔ Offline model ready: '+label()+(loadedTag?' ('+loadedTag+')':'')+'</span>');return}
   setStatus('<span>'+label()+' is not on this phone yet ('+sel.selectedOptions[0].dataset.size+').</span><button class="pill" id="get">Get model</button>');
   $('get').onclick=loadModel;
 }
@@ -228,7 +227,7 @@ async function loadModel(){
     try{localStorage.setItem('yantra.busy','load')}catch(e){}
     setStatus('<span id="pt">Starting…</span><div class="bar2"><i id="pb"></i></div>');
     const m=await lib();
-    mid=resolveModel(m,sel.selectedOptions[0].dataset.pat,await hasF16());thinkOff=/Qwen3/i.test(mid);
+    mid=resolveModel(m,sel.selectedOptions[0].dataset.pat,await hasF16());thinkOff=/Qwen3/i.test(mid);loadedTag=/q4f16/i.test(mid)?'f16':'f32';
     if(engine){try{await engine.unload()}catch(e){}engine=null;loadedId=null}
     const cb={initProgressCallback:p=>{const t=$('pt'),b=$('pb');if(t)t.textContent=String(p.text).slice(0,60);if(b)b.style.width=Math.round(p.progress*100)+'%'}};
     try{engine=await m.CreateMLCEngine(mid,cb,{context_window_size:1024})}
@@ -429,7 +428,7 @@ async function iv(s,msgs,onTok){
     const q=s.bank[s.n],topic=topicOf(q);let f='',sc=null;
     if(cmd==='skip')f='Skipped.';
     else{
-      const r=scoreAnswer(q,text,d);sc=r.score;logProg(topic,sc);
+      const r=scoreAnswer(q,text,d);sc=r.score;
       f='Score: '+sc+'/10 ('+r.label+')'+(r.tips.length?'\n'+r.tips.slice(0,2).map(t=>'• '+t).join('\n'):'');
       if(engine){const c=pick(q+' '+text,d);f+='\n\n'+await gen('You are a friendly interview coach. In 2 or 3 short sentences, say one thing that was good and one way to improve the answer. Do not ask a new question.','QUESTION: '+q+'\nANSWER: '+text.slice(0,600)+'\nCANDIDATE NOTES: '+(c.notes||'(none)').slice(0,400),150,onTok,f+'\n\n')}
     }
@@ -444,30 +443,72 @@ function docs(){let d={};try{d=JSON.parse(localStorage.getItem(IVK())||'{}')}cat
 function ivUi(){const d=docs();$('rs').textContent=d.resume?d.resume.length+' characters saved':'Nothing added yet';$('js').textContent=d.jd?d.jd.length+' characters saved (optional)':'Nothing added yet (optional)'}
 function setDoc(k,t){const d=docs();d[k]=String(t).slice(0,12000);try{localStorage.setItem(IVK(),JSON.stringify(d))}catch(e){toast('Not enough storage to save that.')}ivUi();rpUi()}
 let tgt='resume';
-$('ivopen').onclick=()=>{drawer(false);ivUi();pgRender();$('iv').classList.add('on')};
+$('ivopen').onclick=()=>{drawer(false);ivUi();$('iv').classList.add('on')};
 $('ivx').onclick=()=>$('iv').classList.remove('on');
 $('rup').onclick=()=>{tgt='resume';$('ivf').click()};$('jup').onclick=()=>{tgt='jd';$('ivf').click()};
 function pasteBox(k){tgt=k;$('pbox').style.display='flex';$('ivt').value=docs()[k]||'';$('ivt').focus()}
 $('rpaste').onclick=()=>pasteBox('resume');$('jpaste').onclick=()=>pasteBox('jd');
 $('pbs').onclick=()=>{setDoc(tgt,$('ivt').value);$('pbox').style.display='none';toast('Saved.')};
 const loadScript=u=>new Promise((ok,no)=>{if(document.querySelector('script[src="'+u+'"]'))return ok();const e=document.createElement('script');e.src=u;e.onload=ok;e.onerror=no;document.head.appendChild(e)});
-async function readFile(f){
-  const n=f.name.toLowerCase();
-  if(n.endsWith('.txt'))return f.text();
-  if(n.endsWith('.docx')){await loadScript('https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js');return (await mammoth.extractRawText({arrayBuffer:await f.arrayBuffer()})).value}
-  if(n.endsWith('.pdf')){
-    const base='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/',pdf=await import(base+'pdf.min.mjs');
-    pdf.GlobalWorkerOptions.workerSrc=base+'pdf.worker.min.mjs';
-    const doc=await pdf.getDocument({data:await f.arrayBuffer()}).promise;let out='';
-    for(let i=1;i<=Math.min(doc.numPages,8);i++){const c=await(await doc.getPage(i)).getTextContent();let ly=null;c.items.forEach(it=>{const y=it.transform[5];if(ly!==null&&Math.abs(y-ly)>2)out+='\n';out+=it.str+' ';ly=y});out+='\n'}
-    return out;
+async function unzipEntry(buf,name){
+  const u=new Uint8Array(buf),dv=new DataView(buf);
+  let e=u.length-22;while(e>=0&&dv.getUint32(e,true)!==0x06054b50)e--;
+  if(e<0)throw new Error('not a zip');
+  const cnt=dv.getUint16(e+10,true);let off=dv.getUint32(e+16,true);
+  for(let i=0;i<cnt;i++){
+    if(dv.getUint32(off,true)!==0x02014b50)break;
+    const method=dv.getUint16(off+10,true),csize=dv.getUint32(off+20,true),nl=dv.getUint16(off+28,true),el=dv.getUint16(off+30,true),cl=dv.getUint16(off+32,true),lho=dv.getUint32(off+42,true);
+    if(new TextDecoder().decode(u.subarray(off+46,off+46+nl))===name){
+      const st=lho+30+dv.getUint16(lho+26,true)+dv.getUint16(lho+28,true),data=u.subarray(st,st+csize);
+      if(method===0)return data;
+      const ds=new DecompressionStream('deflate-raw'),w=ds.writable.getWriter();w.write(data);w.close();
+      return new Uint8Array(await new Response(ds.readable).arrayBuffer());
+    }
+    off+=46+nl+el+cl;
   }
+  throw new Error('missing '+name);
+}
+async function docxText(buf){
+  const xml=new TextDecoder().decode(await unzipEntry(buf,'word/document.xml'));
+  return xml.replace(/<w:tab\/>/g,'\t').replace(/<\/w:p>/g,'\n').replace(/<w:br[^>]*\/>/g,'\n').replace(/<[^>]+>/g,'').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/\n{3,}/g,'\n\n');
+}
+async function pdfText(buf){
+  let last;
+  for(const dir of ['build/','legacy/build/']){
+    try{
+      const base='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/'+dir,pdf=await import(base+'pdf.min.mjs');
+      pdf.GlobalWorkerOptions.workerSrc=base+'pdf.worker.min.mjs';
+      const doc=await pdf.getDocument({data:buf.slice(0),isEvalSupported:false}).promise;let out='';
+      for(let i=1;i<=Math.min(doc.numPages,8);i++){const c=await(await doc.getPage(i)).getTextContent();let ly=null;c.items.forEach(it=>{if(!it.transform)return;const y=it.transform[5];if(ly!==null&&Math.abs(y-ly)>2)out+='\n';out+=it.str+' ';ly=y});out+='\n'}
+      return out;
+    }catch(e){last=e}
+  }
+  throw last;
+}
+async function readFile(f){
+  const n=(f.name||'').toLowerCase(),ty=f.type||'';
+  if(n.endsWith('.txt')||ty==='text/plain')return f.text();
+  if(n.endsWith('.docx')||ty.includes('wordprocessingml')){
+    const buf=await f.arrayBuffer();
+    try{return await docxText(buf)}
+    catch(e){await loadScript('https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js');return (await mammoth.extractRawText({arrayBuffer:buf})).value}
+  }
+  if(n.endsWith('.pdf')||ty==='application/pdf')return pdfText(await f.arrayBuffer());
+  if(n.endsWith('.doc'))throw new Error('olddoc');
   throw new Error('type');
+}
+function fileErr(err){
+  const m=String(err&&err.message||err);
+  if(m==='olddoc')return 'Old .doc files are not supported. Save it as .docx or PDF, or paste the text.';
+  if(m==='type')return 'Please use a PDF, Word (.docx) or text file, or paste the text.';
+  if(m==='empty')return 'I found no readable text. It may be a scanned or photo PDF. Paste the text instead.';
+  if(/fetch|import|network|load failed|script/i.test(m))return 'The PDF reader needs the internet the first time. Connect and try again, or paste the text.';
+  return 'Could not read that file ('+m.slice(0,40)+'). Paste the text instead.';
 }
 $('ivf').onchange=async e=>{
   const f=e.target.files[0];e.target.value='';if(!f)return;toast('Reading '+f.name+'…');
   try{const t=await readFile(f);if(t.trim().length<40)throw new Error('empty');setDoc(tgt,t);toast('Saved '+t.length+' characters.')}
-  catch(err){toast('Could not read that file. If it is a scanned PDF or the internet is off, paste the text instead.')}
+  catch(err){toast(fileErr(err))}
 };
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function startMode(mode,o){
@@ -508,30 +549,6 @@ function scoreAnswer(q,a,d){
   if(rel<0.75&&d&&d.resume)tips.push('Mention specifics from your own experience.');
   return {score,label:score>=8?'Strong':score>=6?'Good':score>=4?'Fair':'Needs work',tips,words:w,fill};
 }
-const PGK=()=>'yantra.prog.'+user;
-function prog(){try{return JSON.parse(localStorage.getItem(PGK())||'{}')}catch(e){return {}}}
-const dk=o=>{const t=new Date(Date.now()-o*864e5);return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0')};
-function logProg(topic,sc){
-  const p=prog();p.days=p.days||{};p.topics=p.topics||{};
-  const d=p.days[dk(0)]=p.days[dk(0)]||{n:0,sum:0};d.n++;d.sum+=sc;
-  const t=p.topics[topic]=p.topics[topic]||{n:0,sum:0};t.n++;t.sum+=sc;
-  p.total=(p.total||0)+1;p.sumAll=(p.sumAll||0)+sc;
-  try{localStorage.setItem(PGK(),JSON.stringify(p))}catch(e){}
-}
-function streakOf(p){const days=p.days||{};let o=(days[dk(0)]&&days[dk(0)].n)?0:1,n=0;while(days[dk(o)]&&days[dk(o)].n){n++;o++}return n}
-function pgRender(){
-  const p=prog(),box=$('pgcard');
-  if(!p.total){box.innerHTML='<div class="card"><b>📈 Your progress</b><div>Answer questions in a Practice interview. Your streak, scores and weak topics will show here.</div></div>';return}
-  const days=p.days||{},st=streakOf(p),td=(days[dk(0)]||{}).n||0,avg=(p.sumAll/p.total).toFixed(1);
-  let wk='';for(let o=6;o>=0;o--){const n=(days[dk(o)]||{}).n||0,L='SMTWTFS'[new Date(Date.now()-o*864e5).getDay()];wk+='<div><i style="height:'+Math.min(34,4+n*6)+'px"></i>'+L+'</div>'}
-  const tp=Object.keys(p.topics||{}).filter(k=>['Your experience','Role fit','Technical skills','HR and behavioral'].includes(k)).map(k=>({k,n:p.topics[k].n,a:p.topics[k].sum/p.topics[k].n})).sort((a,b)=>a.a-b.a).slice(0,6);
-  const weak=tp.find(x=>x.n>=2);
-  box.innerHTML='<div class="card"><b>📈 Your progress</b><div>🔥 '+st+' day streak · '+td+' answers today</div><div>Average score '+avg+'/10 over '+p.total+' answers</div><div class="wk">'+wk+'</div>'
-   +(tp.length?'<div>Topics, weakest first</div>'+tp.map(x=>'<div class="tb"><span style="min-width:120px">'+esc(x.k)+'</span><div class="meter"><i style="width:'+Math.round(x.a*10)+'%"></i></div><span>'+x.a.toFixed(1)+'</span></div>').join(''):'')
-   +(weak?'<button class="pill" id="pgweak" data-t="'+esc(weak.k)+'" style="background:var(--peach)">Practice weakest: '+esc(weak.k)+'</button>':'')+'</div>';
-  const b=$('pgweak');if(b)b.onclick=()=>practiceTopic(b.dataset.t);
-}
-function practiceTopic(name){startMode('practice',{topic:name})}
 const TTS=('speechSynthesis' in window);
 let autoTts=true,ttsVoice='';
 try{autoTts=localStorage.getItem('yantra.autotts')!=='0';ttsVoice=localStorage.getItem('yantra.voice')||''}catch(e){}
@@ -838,7 +855,7 @@ $('rpsv').onclick=()=>{setDoc(rtgt,$('rpt').value);$('rpbox').style.display='non
 $('rpf').onchange=async e=>{
   const f=e.target.files[0];e.target.value='';if(!f)return;toast('Reading '+f.name+'…');
   try{const t=await readFile(f);if(t.trim().length<40)throw new Error('empty');setDoc(rtgt,t);toast('Saved '+t.length+' characters.')}
-  catch(err){toast('Could not read that file. Paste the text instead.')}
+  catch(err){toast(fileErr(err))}
 };
 $('rpats').onclick=()=>{const d=docs();if(!d.resume||!d.jd){toast('Add your resume and the job description first.');return}showAts(atsScore(d.resume,d.jd),$('rpout'))};
 $('rptl').onclick=async()=>{
@@ -882,9 +899,7 @@ let pvT=null;$('rpedit').oninput=()=>{clearTimeout(pvT);pvT=setTimeout(rpPrev,50
 $('rpfmt').onclick=()=>{const d=docs();if(!d.resume){toast('Add your resume first.');return}$('rpedit').value=d.resume.replace(/\r/g,'').trim();$('rpres').style.display='flex';rpPrev()};
 const LIC=[
  ['AI models (downloaded to your phone)',[
-  ['Qwen3.5 (0.8B, 2B, 4B)','Apache License 2.0','Made by Alibaba Cloud (Qwen team).'],
-  ['Gemma 4 E2B','Apache License 2.0','Made by Google.'],
-  ['Phi-4-mini','MIT License','Made by Microsoft.']]],
+  ['Qwen3.5 (0.8B and 2B)','Apache License 2.0','Made by Alibaba Cloud (Qwen team).']]],
  ['Tools that run inside Yantra',[
   ['WebLLM','Apache License 2.0','Runs the AI on your phone. By MLC AI.'],
   ['pdf.js','Apache License 2.0','Reads PDF files. By Mozilla.'],
@@ -902,8 +917,8 @@ const LIC=[
   });
   const t=document.createElement('div');t.className='lnote';
   t.textContent='These are short summaries. Please read each project’s own license text for the full terms. Names and logos belong to their owners.';box.appendChild(t);
-  $('licbtn').onclick=()=>{$('iv').classList.remove('on');$('lic').classList.add('on')};
-  $('licx').onclick=()=>{$('lic').classList.remove('on');$('iv').classList.add('on')};
+  $('licbtn').onclick=()=>{drawer(false);$('lic').classList.add('on')};
+  $('licx').onclick=()=>$('lic').classList.remove('on');
 })();
 function autoModel(){
   let b=null,m=null;try{b=localStorage.getItem('yantra.busy');m=localStorage.getItem('yantra.model')}catch(e){}
